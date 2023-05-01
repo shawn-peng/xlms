@@ -1,0 +1,2 @@
+#OpenPepXLLF -in /home/yisupeng/workspace/ms/spec/xl/ecoli_xl/DESTRibo_092010exp2_LEF10.mzML -database /home/yisupeng/workspace/xlms/XLSearch/testDatabase/ecoli_riboprot_fwd.fasta -algorithm:number_top_hits 10 -out_mzIdentML ../results/openpepxllf/knime4.6/DESTRibo_092010exp2_LEF10.mzid
+OpenPepXLLF -in /home/yisupeng/workspace/ms/spec/xl/ecoli_xl/DESTRibo_092010exp2_LEF10.mzML -database /home/yisupeng/workspace/xlms/XLSearch/testDatabase/ecoli_riboprot_fwd.fasta -algorithm:number_top_hits 10 -out_mzIdentML ../results/openpepxllf/knime4.6/DESTRibo_092010exp2_LEF10.mzid
