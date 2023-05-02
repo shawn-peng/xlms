@@ -1,0 +1,9 @@
+
+# Editor temp
+*.asv
+*.swp
+
+# Log
+log/
+
+
