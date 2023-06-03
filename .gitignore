@@ -10,4 +10,7 @@ est_results_xl/
 
 .ipynb_checkpoints/
 
+# Log
+log/
+
 
