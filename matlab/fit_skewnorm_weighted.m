@@ -2,7 +2,13 @@ function [u_new, sigma_new, lambda_new] = fit_skewnorm_weighted(s, Rs, u, sigma,
     tolerance = 5e-3;
     sum_diff = inf;
     sum_rel_diff = inf;
-    while sum_rel_diff > tolerance
+    function debug()
+        figure
+        hold on
+        weighted_hist(s, Rs, 50)
+        plot_skewnorm(gca, s, u, sigma, lambda, sum_Rs / numel(s))
+    end
+    while sum_diff > 1e-10 && sum_rel_diff > tolerance
         delta = lambda / sqrt(1+lambda^2);
         Delta = sigma * delta;
 

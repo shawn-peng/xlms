@@ -1,6 +1,6 @@
 % clear
 % species = 'S.cerevisiae3'
-bootstart = 181;
+bootstart = 1;
 nboots = 20;
 boot_ratio = .1;
 for bootstrap_num = bootstart:bootstart+nboots-1

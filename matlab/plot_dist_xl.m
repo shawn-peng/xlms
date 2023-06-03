@@ -128,7 +128,12 @@ if plotcdf
 
     for i = 1:n
         s = seq(i);
-        fdr = fdr_xl(alpha, beta, u_c, sigma_c, lambda_c, u_i, sigma_i, lambda_i, u_ic, sigma_ic, lambda_ic, s);
+        fdr = fdr_xl(s1, ...
+            ws(1), ws(2), ws(3), ...
+            u_c, sigma_c, lambda_c, ...
+            u_i1, sigma_i1, lambda_i1, ...
+            u_ic, sigma_ic, lambda_ic);
+
     %     fdr
         if fdr > 0.1
             break

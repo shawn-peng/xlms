@@ -1,0 +1,13 @@
+*.asv
+*.fasta
+*.pdf
+*.xlsx
+*.swp
+
+results/
+figures*/
+est_results_xl/
+
+.ipynb_checkpoints/
+
+

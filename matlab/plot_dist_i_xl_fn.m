@@ -3,7 +3,8 @@ u_c, sigma_c, lambda_c, u_ic, sigma_ic, lambda_ic, ...
 u_i, sigma_i, lambda_i, u_i2, sigma_i2, lambda_i2)
 minS = min(min(mat(mat~=-inf)));
 maxS = max(max(mat));
-x_values = minS:0.1:maxS;
+% x_values = minS:0.1:maxS;
+x_values = 0:0.1:maxS;
 
 mat = mat';
 omat = mat;
@@ -12,8 +13,10 @@ mat2 = mat;
 
 s1 = mat(:,1);
 s1 = s1(s1~=0);
+% s1 = s1(s1>0);
 s2 = mat(:,2);
 s2 = s2(s2~=0);
+% s2 = s2(s2>0);
 % s3 = mat(:,3);
 % s3 = s3(s3~=0);
 
@@ -38,10 +41,14 @@ plot(x_values,yic*w1ic,'LineWidth',2, 'LineStyle', '--');
 plot(x_values,yi1*w1i1,'LineWidth',2);
 plot(x_values,y1,'LineWidth',2);
 
-
 histogram(s1,100,'Normalization','pdf', 'FaceColor', 'none');
 
+xlim([0, maxS]);
+
 legend({'dist\_correct'; 'dist\_half\_incorrect'; 'dist\_incorrect'; 'mixture'; 'hist\_first'});
+
+% yic_n = normpdf(x_values, u_ic, sigma_ic);
+% plot(x_values,yic_n*w1ic,'LineWidth',2, 'LineStyle', '--');
 hold off;
 
 ax2 = subplot(2,1,2);
@@ -58,13 +65,16 @@ plot(x_values,y2,'LineWidth',2);
 histogram(s2,100,'Normalization','pdf', 'FaceColor', 'none');
 legend({'dist\_correct'; 'dist\_half\_incorrect'; 'dist\_incorrect'; 'dist\_i2'; 'mixture'; 'hist\_second'});
 
-yyaxis(ax2, 'right');
-cla;
-plot_skewnorm_cdf(ax2, x_values, u_i, sigma_i, lambda_i, 1);
-plot_skewnorm_cdf(ax2, x_values, u_i2, sigma_i2, lambda_i2, 1);
-hold off;
+xlim([0, maxS]);
+% plot(x_values,yi2*w2i1,'LineWidth',2, 'LineStyle', ':');
 
 linkaxes([ax1, ax2], 'x');
+
+yyaxis(ax2, 'right');
+cla;
+% plot_skewnorm_cdf(ax2, x_values, u_i, sigma_i, lambda_i, 1);
+% plot_skewnorm_cdf(ax2, x_values, u_i2, sigma_i2, lambda_i2, 1);
+hold off;
 
 if (strcmp(method(1:5), '_3s4c'))
     subplot(nsp,2,3)

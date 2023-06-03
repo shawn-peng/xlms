@@ -1,20 +1,20 @@
 
 datasets = {
-%     'ecoli_xl';
-%     'MS2000225';
-%     'alban';
-%     'RPA';
-    'CPSF';
     'Alinden';
-    'ALott';
-    'KKT4';
-    'QE';
-    'D1810';
-    'peplib';
-%     'Gordon';
+    % 'ecoli_xl';
+    % 'MS2000225';
+    % 'alban';
+    % 'RPA';
+    % 'CPSF';
+    % 'ALott';
+    % 'KKT4';
+    % 'QE';
+    % 'D1810';
+    % 'peplib';
+    % 'Gordon';
 };
 
-
+fails = {};
 
 for i = 1:size(datasets)
     dataset_name = datasets{i};
@@ -30,7 +30,7 @@ for i = 1:size(datasets)
     info_file = sprintf('%s%s.json', '../results/info/', dataset_name);
     info = load_json(info_file)
 
-    d = sprintf('../figures/%s', dataset_name);
+    d = sprintf('../figures_less_c2_v3/%s', dataset_name);
     if ~exist(d)
         mkdir(d);
     else
@@ -38,15 +38,24 @@ for i = 1:size(datasets)
     end
 
 %         [params, ll, ll1] = EM2_4ic_xl(mat2,0, 0,0,0);
-    for j = 0:16
+    for j = 0:3^4-1
         sl1 = get_sign(j, 1);
         sl2 = get_sign(j, 2);
         sl3 = get_sign(j, 3);
         sl4 = get_sign(j, 4);
-%         if sl1 < 0
-%             continue
-%         end
-        [params, ll, ll1] = EM2_4ic_xl(mat2,sl1,sl2,sl3,sl4);
+        if sl1 < 0 || sl2 < 0 || sl3 ~= sl4
+            continue
+        end
+
+        ti = sprintf('%s\\_(%d,%d,%d,%d)', escape_underscore(dataset_name), sl1, sl2, sl3, sl4);
+        
+        try
+            [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic(mat2, ...
+                sl1,sl2,sl3,sl4,'tolerance',1e-4,'c_range',0.3);
+        catch ME
+            fails{end+1} = ti;
+            continue
+        end
         if ll > best_ll
             best_ll = ll;
             best_params = params;
@@ -55,14 +64,19 @@ for i = 1:size(datasets)
         
         subplot(2, 1, 1);
         
-        ws = best_params{1};
-        theta = best_params{2};
+        ws = params{1};
+        theta = params{2};
         [u_c, sigma_c, lambda_c] = unpack_skntheta(theta(1));
         [u_ic, sigma_ic, lambda_ic] = unpack_skntheta(theta(2));
         [u_i1, sigma_i1, lambda_i1] = unpack_skntheta(theta(3));
         [u_i2, sigma_i2, lambda_i2] = unpack_skntheta(theta(4));
         
-        fdr = fdr_xl(ws(1), ws(2), ws(3), u_c, sigma_c, lambda_c, u_i1, sigma_i1, lambda_i1, u_ic, sigma_ic, lambda_ic, s1);
+        fdr = fdr_xl(s1, ...
+            ws(1), ws(2), ws(3), ...
+            u_c, sigma_c, lambda_c, ...
+            u_i1, sigma_i1, lambda_i1, ...
+            u_ic, sigma_ic, lambda_ic);
+
         sthres = fdr_thres(s1, fdr, 0.01);
         
         xline(sthres)
@@ -74,7 +88,6 @@ for i = 1:size(datasets)
         yyaxis right
         plot(s1, fdr);
         
-        ti = sprintf('%s\\_(%d,%d,%d,%d)', escape_underscore(dataset_name), sl1, sl2, sl3, sl4);
         title(ti);
         filename = sprintf('%s/%d_%d_%d_%d.png', d, sl1, sl2, sl3, sl4);
         saveas(gcf, filename);
@@ -100,7 +113,11 @@ for i = 1:size(datasets)
     
     subplot(2, 1, 1);
 
-    fdr = fdr_xl(ws(1), ws(2), ws(3), u_c, sigma_c, lambda_c, u_i1, sigma_i1, lambda_i1, u_ic, sigma_ic, lambda_ic, s1);
+    fdr = fdr_xl(s1, ...
+        ws(1), ws(2), ws(3), ...
+        u_c, sigma_c, lambda_c, ...
+        u_i1, sigma_i1, lambda_i1, ...
+        u_ic, sigma_ic, lambda_ic);
     sthres = fdr_thres(s1, fdr, 0.01);
 
     xline(sthres)
@@ -134,9 +151,12 @@ for i = 1:size(datasets)
 end
 
 function s = get_sign(j, d)
+d = d - 1;
+j = floorDiv(j, 3^d);
+j = mod(j, 3);
 if j == 0
     s = 0;
-elseif bitand(j-1, bitshift(1, d-1))
+elseif j == 1
     s = -1;
 else
     s = 1;

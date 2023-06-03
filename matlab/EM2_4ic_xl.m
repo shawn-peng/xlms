@@ -1,12 +1,23 @@
-function [params, ll, ll1] = EM2_4i_xl(S,sl1,sl2,sl3,sl4)
+function [params, ll, ll1] = EM2_4ic_xl(S,sl1,sl2,sl3,sl4,varargin)
 %EM The EM algorithm to estimate parameters
 %   f1 = alpha*fc + (1-alpha)*fi1
 %   f2 = alpha*fi1 + beta*fc + (1-alpha-beta)*fi2
-tollerance = 1e-3;
+
+parser = inputParser;
+addParameter(parser, 'tolerance', 1e-7);
+addParameter(parser, 'lower_quantile', 0.01);
+addParameter(parser, 'c_range', 1/2);
+
+parse(parser, varargin{:});
+tolerance      = parser.Results.tolerance;
+lower_quantile  = parser.Results.lower_quantile;
+c_range         = parser.Results.c_range;
+
+% tollerance = 1e-7;
 % tollerance = 1e-3;
 
 S = S(:, S(2,:)~=0);
-q1 = quantile(S(1,:), 0.01);
+q1 = quantile(S(1,:), lower_quantile);
 S = S(:, (S(1,:) > q1));
 
 N = size(S,1);
@@ -23,7 +34,7 @@ sorted_s2 = sort(s2);
 
 M1 = size(s1,2);
 M2 = size(s2,2);
- 
+
 % % S1_sorted = sort(S(1,:), 'descend');
 % % S2_sorted = sort(S(2,:), 'descend');
 % S1_sorted = sort(s1, 'descend');
@@ -59,7 +70,11 @@ M2 = size(s2,2);
 [alpha, beta, ...
     u_c, sigma_c, lambda_c, ...
     u_ic, sigma_ic, lambda_ic, ...
-    u_i1, sigma_i1, lambda_i1] = EM1_3i_xl(S, sl1, sl2, sl3);
+    u_i1, sigma_i1, lambda_i1] = ...
+    EM1_3ic_xl(S, sl1, sl2, sl3, ...
+        'tolerance', tolerance, ...
+        'lower_quantile', lower_quantile, ...
+        'c_range', c_range);
 close;
 
 w1c = alpha;
@@ -118,44 +133,61 @@ lambda_i2 = sl4;
 % sigma_i2 = sigma_i1;
 % lambda_i2 = sign(lambda_i2) * lambda_i1
 
-mode_i1 = skew_norm_mode(u_i1, sigma_i1, lambda_i1);
-pdf_points = sorted_s2(sorted_s2>mode_i1);
-cdf_points = sorted_s2(:);
-param_check_func = make_param_check_function( ...
-    pdf_points, cdf_points, ...
+% mode_i1 = skew_norm_mode(u_i1, sigma_i1, lambda_i1);
+% pdf_points = sorted_s2(sorted_s2>mode_i1);
+% cdf_points = sorted_s2(:);
+x_range = sorted_s2(M1) : (sorted_s2(1)-sorted_s2(M1))/100 : sorted_s2(1);
+param_c_ic_check_func = make_param_check_function_s2combined( ...
+    x_range, 1, 1, w2c, w2ic, ...
+    u_c, sigma_c, lambda_c, ...
+    u_ic, sigma_ic, lambda_ic);
+param_ic_i1_check_func = make_param_check_function( ...
+    x_range, 1, 1, ...
+    u_ic, sigma_ic, lambda_ic, ...
+    u_i1, sigma_i1, lambda_i1);
+param_i1_i2_check_func = make_param_check_function( ...
+    x_range, 1, 1, ...
     u_i1, sigma_i1, lambda_i1, ...
     u_i2, sigma_i2, lambda_i2);
 
-if ~param_check_func('sigma_2', sigma_i2)
-%     param_check_func('sigma_2', sigma_i1);
-    mode_i1 = skew_norm_mode(u_i1, sigma_i1, 1e-7*sign(lambda_i1));
-    pdf_points = sorted_s2(sorted_s2>mode_i1);
-    cdf_points = sorted_s2(:);
-    param_check_func = make_param_check_function( ...
-        pdf_points, cdf_points, ...
+if ~param_i1_i2_check_func('sigma_2', sigma_i2)
+    % param_i1_i2_check_func('sigma_2', sigma_i1);
+    % mode_i1 = skew_norm_mode(u_i1, sigma_i1, 1e-7*sign(lambda_i1));
+    % pdf_points = sorted_s2(sorted_s2>mode_i1);
+    % cdf_points = sorted_s2(:);
+    param_i1_i2_check_func = make_param_check_function( ...
+        x_range, 1, 1, ...
         u_i1, sigma_i1, 1e-7*sign(lambda_i1), ...
-        u_i2, sigma_i1, 1e-7*sign(lambda_i2));
+        -10, sigma_i1, 1e-7*sign(lambda_i2));
     
 %     lambda_i1 = param_bin_search( ...
 %         sign(lambda_i1)*1e-7, lambda_i1, ...
-%         @(x) param_check_func('lambda_1', x));
+%         @(x) param_i1_i2_check_func('lambda_1', x));
 
-%     assert(param_check_func('sigma_2', sigma_i1));
-    if ~param_check_func('sigma_2', sigma_i1)
+%     assert(param_i1_i2_check_func('sigma_2', sigma_i1));
+
+    u_i2 = param_bin_search( ...
+        -10, u_i2, ...
+        @(x) param_i1_i2_check_func('u_2', x));
+    if ~param_i1_i2_check_func('sigma_2', sigma_i1)
         return
     end
+
+    % if ~param_i1_i2_check_func('lambda_2', 0)
+    %     return
+    % end
     disp('Searching sigma_i2');
     sigma_i2 = param_bin_search( ...
         sigma_i1, sigma_i2, ...
-        @(x) param_check_func('sigma_2', x));
+        @(x) param_i1_i2_check_func('sigma_2', x));
     disp('Searching lambda_i1');
     lambda_i1 = param_bin_search( ...
         1e-7*lambda_i1, lambda_i1, ...
-        @(x) param_check_func('lambda_1', x));
+        @(x) param_i1_i2_check_func('lambda_1', x));
     disp('Searching lambda_i2');
     lambda_i2 = param_bin_search( ...
         1e-7*lambda_i2, lambda_i2, ...
-        @(x) param_check_func('lambda_2', x));
+        @(x) param_i1_i2_check_func('lambda_2', x));
 end
 
 
@@ -183,7 +215,7 @@ sys_eqs = [
 ];
 
 figure('Position', [10,10,2000,500]);
-while abs(ll - prev_ll) > tollerance
+while abs(ll - prev_ll) > tolerance
     prev_ll = ll;
 
     u_c_new  = u_c;
@@ -258,13 +290,6 @@ while abs(ll - prev_ll) > tollerance
     sum_Rs2i1 = sum(Rs2i1);
     sum_Rs2i2 = sum(Rs2i2);
     
-%     mode_i1 = skew_norm_mode(u_i1, sigma_i1, lambda_i1);
-%     check_points = s2(s2>mode_i1);
-    param_check_func = make_param_check_function( ...
-        pdf_points, cdf_points, ...
-        u_i1, sigma_i1, lambda_i1, ...
-        u_i2, sigma_i2, lambda_i2);
-    assert(param_check_func('u_2', u_i2));
     
     w1c  = sum_Rs1c  / M1;
     w1ic = sum_Rs1ic / M1;
@@ -281,8 +306,6 @@ while abs(ll - prev_ll) > tollerance
     flag = 0;
     
     if w2c <= w1ic + w1i1
-%         sub_vars(end+1) = sym_eta2c;
-%         sub_vals(end+1) = 0;
         extra_eqs(end+1, 1) = sym_eta2c == 0;
     else
         extra_eqs(end+1, 1) = sym_w2c == sym_w1ic + sym_w1i1;
@@ -290,8 +313,6 @@ while abs(ll - prev_ll) > tollerance
     end
     
     if w2ic <= w1c + w1ic + w1i1
-%         sub_vars(end+1) = sym_eta2ic;
-%         sub_vals(end+1) = 0;
         extra_eqs(end+1, 1) = sym_eta2ic == 0;
     else
         extra_eqs(end+1, 1) = sym_w2ic == sym_w1c + sym_w1ic + sym_w1i1;
@@ -299,8 +320,6 @@ while abs(ll - prev_ll) > tollerance
     end
     
     if w2i1 <= w1c + w1ic
-%         sub_vars(end+1) = sym_eta2i1;
-%         sub_vals(end+1) = 0;
         extra_eqs(end+1, 1) = sym_eta2i1 == 0;
     else
         extra_eqs(end+1, 1) = sym_w2i1 == sym_w1c + sym_w1ic;
@@ -308,8 +327,6 @@ while abs(ll - prev_ll) > tollerance
     end
     
     if w2i2 <= w1i1
-%         sub_vars(end+1) = sym_eta2i2;
-%         sub_vals(end+1) = 0;
         extra_eqs(end+1, 1) = sym_eta2i2 == 0;
     else
         extra_eqs(end+1, 1) = sym_w2i2 == sym_w1i1;
@@ -328,8 +345,6 @@ while abs(ll - prev_ll) > tollerance
         w2i1 = double(solution.sym_w2i1);
         w2i2 = double(solution.sym_w2i2);
     end
-%     double(solution.sym_eta1)
-%     double(solution.sym_eta2)
 
     assert(w2c <= w1ic + w1i1);
     assert(w2ic <= w1c + w1ic + w1i1);
@@ -337,64 +352,32 @@ while abs(ll - prev_ll) > tollerance
     assert(w2i2 <= w1i1);
 
     
-%     if w2i1 > w1c + w1ic
-% %         constrain_violates = constrain_violates + 1;
-% %         assert(constrain_violates < 10);
-%         w2i1 = (sum_Rs1c + sum_Rs1ic + sum_Rs2i1) / (M1+M2);
-%         eta2i1 = (sum_Rs1c + sum_Rs1ic - sum_Rs2i1) / (2 * (1 - w2i1) * w2i1);
-%         eta1 = -M1 + eta2i1 * w2i1;
-%         eta2 = -M2 - eta2i1 * w2i1;
-%         
-%         w1c = -sum_Rs1c / (eta1-eta2i1);
-%         w1ic = -sum_Rs1ic / (eta1-eta2i1);
-%         w1i1 = -sum_Rs1i1 / eta1;
-%         w2c = -sum_Rs2c / eta2;
-%         w2ic = -sum_Rs2ic / eta2;
-%         w2i2 = -sum_Rs2i2 / eta2;
-%         
-%         assert(w2i2 < w1i1);
-%     end
-%     
-%     if w2i2 > w1i1
-%     
-%         w1i1 = (sum_Rs1i1 + sum_Rs2i2) / (M1+M2);
-%         w2i2 = w1i1;
-%         eta2i2 = (sum_Rs1i1 - sum_Rs2i2) / (2 * (1 - w1i1) * w1i1);
-%         eta1 = -M1 + eta2i2 * w1i1;
-%         eta2 = -M2 - eta2i2 * w1i1;
-% 
-%         w1c = -sum_Rs1c / eta1;
-%         w1ic = -sum_Rs1ic / eta1;
-%         w2c = -sum_Rs2c / eta2;
-%         w2ic = -sum_Rs2ic / eta2;
-%         w2i1 = -sum_Rs2i1 / eta2;
-%     end
     ws = [w1c, w1ic, w1i1, w2c, w2ic, w2i1, w2i2];
     
 %     old_w2i1 = ws(6);
 %     old_w2i2 = ws(7);
 
-%     if ~param_check_func('w1', w2i1)
-%         w2i1 = param_bin_search(old_w2i1, w2i1, @(x) param_check_func('w1', x));
+%     if ~param_i1_i2_check_func('w1', w2i1)
+%         w2i1 = param_bin_search(old_w2i1, w2i1, @(x) param_i1_i2_check_func('w1', x));
 %     end
-%     if ~param_check_func('w2', w2i2)
-%         w2i2 = param_bin_search(old_w2i2, w2i2, @(x) param_check_func('w2', x));
+%     if ~param_i1_i2_check_func('w2', w2i2)
+%         w2i2 = param_bin_search(old_w2i2, w2i2, @(x) param_i1_i2_check_func('w2', x));
 %     end
-%     if ~param_check_func('w1', w2i1) || ~param_check_func('w2', w2i2)
+%     if ~param_i1_i2_check_func('w1', w2i1) || ~param_i1_i2_check_func('w2', w2i2)
 %         w2i1 = old_w2i1;
 %         w2i2 = old_w2i2;
 %     end
 
-%     if param_check_func('w1', w2i1) && param_check_func('w2', w2i2)
+%     if param_i1_i2_check_func('w1', w2i1) && param_i1_i2_check_func('w2', w2i2)
 %         ws = [w1c, w1ic, w1i1, w2c, w2ic, w2i1, w2i2];
 %     else
 %         [w1c, w1ic, w1i1, w2c, w2ic, w2i1, w2i2] = unpack7(ws);
 %         % reset the value of both params in the closure to old values
-%         param_check_func('w1', w2i1);
-%         param_check_func('w2', w2i2);
+%         param_i1_i2_check_func('w1', w2i1);
+%         param_i1_i2_check_func('w2', w2i2);
 %         % then make an assertion
-%         assert(param_check_func('w1', w2i1));
-%         assert(param_check_func('w2', w2i2));
+%         assert(param_i1_i2_check_func('w1', w2i1));
+%         assert(param_i1_i2_check_func('w2', w2i2));
 %     end
     
     assert(all(ws >= 0));
@@ -417,16 +400,13 @@ while abs(ll - prev_ll) > tollerance
         u_i2_new = u_i1_new;
     end
     
-%     mode_c = skew_norm_mode(u_c, sigma_c, lambda_c);
-%     mode_ic = skew_norm_mode(u_ic, sigma_ic, lambda_ic);
-%     mode_i1 = skew_norm_mode(u_i1, sigma_i1, lambda_i1);
-%     mode_i2 = skew_norm_mode(u_i2, sigma_i2, lambda_i2);
     
-%     if ~param_check_func('u_2', u_i2_new)
-%         u_i2_new = param_bin_search(u_i2, u_i2_new, @(x) param_check_func('u_2', x));
-%     end
-    u_i1_new = param_bin_search(u_i1, u_i1_new, @(x) param_check_func('u_1', x));
-    u_i2_new = param_bin_search(u_i2, u_i2_new, @(x) param_check_func('u_2', x));
+    u_c_new = param_bin_search(u_c, u_c_new, @(x) param_c_ic_check_func('u_1', x));
+    u_ic_new = param_bin_search(u_ic, u_ic_new, @(x) param_c_ic_check_func('u_2', x));
+    u_ic_new = param_bin_search(u_ic, u_ic_new, @(x) param_ic_i1_check_func('u_1', x));
+    u_i1_new = param_bin_search(u_i1, u_i1_new, @(x) param_ic_i1_check_func('u_2', x));
+    u_i1_new = param_bin_search(u_i1, u_i1_new, @(x) param_i1_i2_check_func('u_1', x));
+    u_i2_new = param_bin_search(u_i2, u_i2_new, @(x) param_i1_i2_check_func('u_2', x));
 
     ll = func_ll2_4i_xl(s1, s2, ws, ...
         u_c_new, sigma_c_new, lambda_c_new, u_ic_new, sigma_ic_new, lambda_ic_new, ...
@@ -484,38 +464,36 @@ while abs(ll - prev_ll) > tollerance
         u_c_new, sigma_c_new, lambda_c_new, u_ic_new, sigma_ic_new, lambda_ic_new, ...
         u_i1_new, sigma_i1_new, lambda_i1_new, u_i2_new, sigma_i2_new, lambda_i2_new)
 
-
-%     sim_xc  = randn_skew([SIM_SIZE, 1], u_c_new,  sigma_c_new,  lambda_c_new);
-%     sim_xic = randn_skew([SIM_SIZE, 1], u_ic_new, sigma_ic_new, lambda_ic_new);
-%     sim_xi1 = randn_skew([SIM_SIZE, 1], u_i1_new, sigma_i1_new, lambda_i1_new);
-%     p_c_i1  = sum(sim_xc  > sim_xi1) / SIM_SIZE;
-%     p_c_ic  = sum(sim_xc  > sim_xic) / SIM_SIZE;
-%     p_ic_i1 = sum(sim_xic > sim_xi1) / SIM_SIZE;
     
-%     lambda_1 = (2*M1 + sum_Rs1i1 + 2*M2 - sum_Rs2i2);
-%     w1 = p_c_ic * (sum_Rs1c + sum_Rs2ic + sum_Rs1ic + sum_Rs2c) / lambda_1;
-%     w2 = p_c_i1 * (sum_Rs1c + sum_Rs2i1 + sum_Rs1i1 + sum_Rs2c) / lambda_1;
-%     w3 = (1-p_c_ic) * (sum_Rs1c + sum_Rs2ic + sum_Rs1ic + sum_Rs2c) / lambda_1;
-%     w4 = (1-p_c_i1) * (sum_Rs1c + sum_Rs2i1 + sum_Rs1i1 + sum_Rs2c) / lambda_1;
-%     w5 = p_ic_i1 * (sum_Rs1ic + sum_Rs2i1 + sum_Rs1i1 + sum_Rs2ic) / lambda_1;
-%     w6 = (1-p_ic_i1) * (sum_Rs1ic + sum_Rs2i1 + sum_Rs1i1 + sum_Rs2ic) / lambda_1;
-%     w7 = (sum_Rs1i1 + sum_Rs2i2) / lambda_1;
-%     ws = [w1, w2, w3, w4, w5, w6, w7];
+    % sigma_i1_new = param_bin_search(sigma_i1, sigma_i1_new, @(x) param_i1_i2_check_func('sigma_1', x));
+    % sigma_i2_new = param_bin_search(sigma_i2, sigma_i2_new, @(x) param_i1_i2_check_func('sigma_2', x));
+    % lambda_i1_new = param_bin_search(lambda_i1, lambda_i1_new, @(x) param_i1_i2_check_func('lambda_1', x));
+    % lambda_i2_new = param_bin_search(lambda_i2, lambda_i2_new, @(x) param_i1_i2_check_func('lambda_2', x));
 
+    % sigma_c_new = param_bin_search(sigma_c, sigma_c_new, @(x) param_c_ic_check_func('sigma_1', x));
+    % sigma_ic_new = param_bin_search(sigma_ic, sigma_ic_new, @(x) param_c_ic_check_func('sigma_2', x));
+    % sigma_i1_new = param_bin_search(sigma_i1, sigma_i1_new, @(x) param_ic_i1_check_func('sigma_2', x));
+    % sigma_i2_new = param_bin_search(sigma_i2, sigma_i2_new, @(x) param_i1_i2_check_func('sigma_2', x));
 
-%     alpha_new = w1 + w2 + w3 + w4;
-%     beta_new = w1 + w3 + w5 + w6;
+    sigma_c_new = param_bin_search(sigma_c, sigma_c_new, @(x) param_c_ic_check_func('sigma_1', x));
+    sigma_ic_new = param_bin_search(sigma_ic, sigma_ic_new, @(x) param_c_ic_check_func('sigma_2', x));
+    sigma_ic_new = param_bin_search(sigma_ic, sigma_ic_new, @(x) param_ic_i1_check_func('sigma_1', x));
+    sigma_i1_new = param_bin_search(sigma_i1, sigma_i1_new, @(x) param_ic_i1_check_func('sigma_2', x));
+    sigma_i1_new = param_bin_search(sigma_i1, sigma_i1_new, @(x) param_i1_i2_check_func('sigma_1', x));
+    sigma_i2_new = param_bin_search(sigma_i2, sigma_i2_new, @(x) param_i1_i2_check_func('sigma_2', x));
+
+    % lambda_c_new = param_bin_search(lambda_c, lambda_c_new, @(x) param_c_ic_check_func('lambda_1', x));
+    % lambda_ic_new = param_bin_search(lambda_ic, lambda_ic_new, @(x) param_c_ic_check_func('lambda_2', x));
+    % lambda_i1_new = param_bin_search(lambda_i1, lambda_i1_new, @(x) param_ic_i1_check_func('lambda_2', x));
+    % lambda_i2_new = param_bin_search(lambda_i2, lambda_i2_new, @(x) param_i1_i2_check_func('lambda_2', x));
     
-
+    lambda_c_new = param_bin_search(lambda_c, lambda_c_new, @(x) param_c_ic_check_func('lambda_1', x));
+    lambda_ic_new = param_bin_search(lambda_ic, lambda_ic_new, @(x) param_c_ic_check_func('lambda_2', x));
+    lambda_ic_new = param_bin_search(lambda_ic, lambda_ic_new, @(x) param_ic_i1_check_func('lambda_1', x));
+    lambda_i1_new = param_bin_search(lambda_i1, lambda_i1_new, @(x) param_ic_i1_check_func('lambda_2', x));
+    lambda_i1_new = param_bin_search(lambda_i1, lambda_i1_new, @(x) param_i1_i2_check_func('lambda_1', x));
+    lambda_i2_new = param_bin_search(lambda_i2, lambda_i2_new, @(x) param_i1_i2_check_func('lambda_2', x));
     
-    sigma_i1_new = param_bin_search(sigma_i1, sigma_i1_new, @(x) param_check_func('sigma_1', x));
-    sigma_i2_new = param_bin_search(sigma_i2, sigma_i2_new, @(x) param_check_func('sigma_2', x));
-    lambda_i1_new = param_bin_search(lambda_i1, lambda_i1_new, @(x) param_check_func('lambda_1', x));
-    lambda_i2_new = param_bin_search(lambda_i2, lambda_i2_new, @(x) param_check_func('lambda_2', x));
-
-    
-%     alpha = alpha_new;
-%     beta = beta_new;
     u_c = u_c_new;
     u_ic = u_ic_new;
     u_i1 = u_i1_new;
@@ -531,23 +509,15 @@ while abs(ll - prev_ll) > tollerance
 	lambda_i1 = lambda_i1_new;
 	lambda_i2 = lambda_i2_new;
     
+
+    % mode_i1 = skew_norm_mode(u_i1, sigma_i1, lambda_i1);
+    % check_points = s2(s2>mode_i1);
+    % param_i1_i2_check_func = make_param_check_function( ...
+    %     sorted_s2, ...
+    %     u_i1, sigma_i1, lambda_i1, ...
+    %     u_i2, sigma_i2, lambda_i2);
+    % assert(param_i1_i2_check_func('u_2', u_i2));
     
-%     mode_i1 = skew_norm_mode(u_i1, sigma_i1, lambda_i1);
-%     check_points = s2(s2>mode_i1);
-    param_check_func = make_param_check_function( ...
-        pdf_points, cdf_points, ...
-        u_i1, sigma_i1, lambda_i1, ...
-        u_i2, sigma_i2, lambda_i2);
-    assert(param_check_func('u_2', u_i2));
-    
-%     disp(ll - prev_ll);
-%     disp(alpha);
-%     sigma_c
-%     sigma_i
-%     u_c
-%     u_i
-%     lambda_c
-%     lambda_i
 end
 
 theta_c = pack_skntheta(u_c, sigma_c, lambda_c);
@@ -569,23 +539,6 @@ function [u, sigma] = unpack2(theta)
     sigma = theta(2);
 end
 
-function f = make_param_check_function(x_pdf, x_cdf, ...
-    u_1, sigma_1, lambda_1, ...
-    u_2, sigma_2, lambda_2)
-
-function flag = helper(param_name, param_val)
-    eval([param_name, '=param_val;']);
-    flag1 = check_skewnorm_pdf_higher(x_pdf, ...
-        u_1, sigma_1, lambda_1, ...
-        u_2, sigma_2, lambda_2);
-    flag2 = check_skewnorm_cdf_higher(x_cdf, ...
-        u_2, sigma_2, lambda_2, ...
-        u_1, sigma_1, lambda_1);
-    flag = flag1 && flag2;
-end
-
-f = @helper;
-end
 
 %     syms sym_alpha sym_beta;
 %     syms sym_w1c(sym_alpha, sym_beta) sym_w1ic(sym_alpha, sym_beta) sym_wi1(sym_alpha, sym_beta);
