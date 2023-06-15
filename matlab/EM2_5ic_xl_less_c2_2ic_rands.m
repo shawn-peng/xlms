@@ -7,11 +7,13 @@ parser = inputParser;
 addParameter(parser, 'tolerance', 1e-7);
 addParameter(parser, 'lower_quantile', 0.01);
 addParameter(parser, 'c_range', 1/2);
+addParameter(parser, 'constraints', []);
 
 parse(parser, varargin{:});
-tolerance      = parser.Results.tolerance;
+tolerance       = parser.Results.tolerance;
 lower_quantile  = parser.Results.lower_quantile;
 c_range         = parser.Results.c_range;
+constraints     = parser.Results.constraints;
 
 
 S = S(:, S(2,:)~=0);
@@ -28,6 +30,7 @@ s1 = s1(s1~=0);
 s2 = S(2,:);
 s2 = s2(s2~=0);
 
+sorted_s1 = sort(s1);
 sorted_s2 = sort(s2);
 
 M1 = size(s1,2);
@@ -38,7 +41,7 @@ M2 = size(s2,2);
     u_c, sigma_c, lambda_c, ...
     u_ic, sigma_ic, lambda_ic, ...
     u_i1, sigma_i1, lambda_i1] = ...
-    EM1_3ic_xl(S, sl1, sl2, sl3, ...
+    EM1_3ic_xl(S, sl1, sl2, sl4, ...
         'tolerance', tolerance, ...
         'lower_quantile', lower_quantile, ...
         'c_range', c_range);
@@ -71,72 +74,35 @@ ws = [w1c, w1ic, w1i1, w2c, w2ic, w2ic2, w2i1, w2i2];
 assert(w2c+w2ic+w2ic2+w2i1+w2i2 - 1.0 <= 1e-4);
 assert(all(ws >= 0));
 
-lambda_i2 = sl4;
-lambda_ic2 = sl5;
+lambda_ic2 = sl3;
+lambda_i2 = sl5;
 [u_i2, sigma_i2, lambda_i2] = fit_skewnorm_weighted(s2, Rs1i1, u_i1, sigma_i1, lambda_i2);
-[u_ic2, sigma_ic2, lambda_ic2] = fit_skewnorm_weighted(s2, Rs1c, u_c, sigma_c, lambda_ic2);
+% [u_ic2, sigma_ic2, lambda_ic2] = fit_skewnorm_weighted(s2, Rs1c, u_c, sigma_c, lambda_ic2);
+[u_ic2, sigma_ic2, lambda_ic2] = fit_skewnorm_weighted(s2, Rs1ic, u_ic, sigma_ic, lambda_ic2);
 
 
-x_range = sorted_s2(M1) : (sorted_s2(1)-sorted_s2(M1))/100 : sorted_s2(1);
+x1_range = sorted_s1(M1) : (sorted_s1(1)-sorted_s1(M1))/100 : sorted_s1(1);
+x2_range = sorted_s2(M1) : (sorted_s2(1)-sorted_s2(M1))/100 : sorted_s2(1);
 
+param_check_func = make_param_check_func(x1_range, x2_range, constraints);
 
+ll_func = make_ll_func(s1, s2);
 
-if ~param_c_ic_check_func('sigma_1', sigma_c, 1e-7)
-    new_w2c = param_bin_search(1e-12, w2c, ...
-        @(x, fuzzy) param_c_ic_check_func('w_21', x, fuzzy));
-    rw = new_w2c / (new_w2c + w2ic);
-    restw = w2c - new_w2c;
-    w2c = new_w2c + rw * restw;
-    w2ic = w2ic + (1-rw) * restw;
-    param_c_ic_check_func('w_21', w2c, 1e-7);
-    assert(param_c_ic_check_func('w_22', w2ic, 1e-7));
-end
+params_0 = pack_params(ws, ...
+    u_c, sigma_c, 1e-7*sl1, ...
+    u_ic, sigma_ic, 1e-7*sl2, ...
+    u_ic-10, sigma_ic, 1e-7*sl3, ...
+    u_i1, sigma_ic, 1e-7*sl4, ...
+    u_i1-10, sigma_ic, 1e-7*sl5);
 
-if ~param_ic_i1_check_func('sigma_2', sigma_i1, 1e-7)
-    
-    param_ic_i1_check_func = make_param_check_function( ...
-        x_range, 1, 1, ...
-        u_ic, sigma_ic, lambda_ic, ...
-        u_i1, sigma_ic, lambda_i1);
-    disp('Searching lambda_i1');
-    
-    lambda_i1 = param_bin_search( ...
-        1e-7*lambda_i1, lambda_i1, ...
-        @(x, fuzzy) param_ic_i1_check_func('lambda_2', x, fuzzy));
-    sigma_i1 = param_bin_search( ...
-        sigma_ic, sigma_i1, ...
-        @(x, fuzzy) param_ic_i1_check_func('sigma_2', x, fuzzy));
+params = pack_params(ws, ...
+    u_c, sigma_c, lambda_c, ...
+    u_ic, sigma_ic, lambda_ic, ...
+    u_ic2, sigma_ic2, lambda_ic2, ...
+    u_i1, sigma_i1, lambda_i1, ...
+    u_i2, sigma_i2, lambda_i2);
 
-end
-
-ws = [w1c, w1ic, w1i1, w2c, w2ic, w2ic2, w2i1, w2i2];
-assert(w2c+w2ic+w2ic2+w2i1+w2i2 - 1.0 <= 1e-4);
-
-
-if ~param_i1_i2_check_func('sigma_2', sigma_i2, 1e-7)
-
-    param_i1_i2_check_func = make_param_check_function( ...
-        x_range, 1, 1, ...
-        u_i1, sigma_i1, 1e-7*sign(lambda_i1), ...
-        -10, sigma_i1, 1e-7*sign(lambda_i2));
-    
-
-    u_i2 = param_bin_search( ...
-        -10, u_i2, ...
-        @(x, fuzzy) param_i1_i2_check_func('u_2', x, fuzzy));
-    if ~param_i1_i2_check_func('sigma_2', sigma_i1, 1e-10)
-        return
-    end
-
-    disp('Searching sigma_i2');
-    sigma_i2 = param_bin_search( ...
-        sigma_i1, sigma_i2, ...
-        @(x, fuzzy) param_i1_i2_check_func('sigma_2', x, fuzzy));
-    disp('Searching lambda_i2');
-    lambda_i2 = param_bin_search( ...
-        1e-7*lambda_i2, lambda_i2, ...
-        @(x, fuzzy) param_i1_i2_check_func('lambda_2', x, fuzzy));
-end
+params = param_rand_search(params_0, params, param_check_func, ll_func, 100);
 
 
 constrain_violates = 0;
@@ -166,6 +132,13 @@ sys_eqs = [
 figure('Position', [10,10,2000,500]);
 while abs(ll - prev_ll) > tolerance
     prev_ll = ll;
+
+    ws = get_weights(params);
+    [u_c,   sigma_c,   lambda_c  ] = get_component_params(params, "c");
+    [u_ic,  sigma_ic,  lambda_ic ] = get_component_params(params, "ic");
+    [u_ic2, sigma_ic2, lambda_ic2] = get_component_params(params, "ic2");
+    [u_i1,  sigma_i1,  lambda_i1 ] = get_component_params(params, "i1");
+    [u_i2,  sigma_i2,  lambda_i2 ] = get_component_params(params, "i2");
 
     u_c_new   = u_c;
     u_ic_new  = u_ic;
@@ -328,28 +301,14 @@ while abs(ll - prev_ll) > tolerance
 
     old_ws = ws;
 
-    old_w2c = old_ws(4);
-    new_w2c = param_bin_search( ...
-        old_w2c, w2c, ...
-        @(x, fuzzy) param_c_ic_check_func('w_21', x, fuzzy));
-    rw = new_w2c / (new_w2c + w2ic);
-    old_sum = w2c + w2ic;
-    restw = w2c - new_w2c;
-    w2c = new_w2c + rw * restw;
-    w2ic = w2ic + (1-rw) * restw;
-    new_sum = w2c + w2ic;
-    w2ic = w2ic + (old_sum - new_sum);
-    param_c_ic_check_func('w_21', w2c, 1e-7);
-    assert(param_c_ic_check_func('w_22', w2ic, 1e-7));
-    
     ws = [w1c, w1ic, w1i1, w2c, w2ic, w2ic2, w2i1, w2i2];
     
     assert(all(ws >= 0));
     assert(abs(sum(ws) - 2) < 1e-10);
     
     ll = func_ll2_4i_xl(s1, s2, ws, ...
-    u_c_new, sigma_c_new, lambda_c_new, u_ic_new, sigma_ic_new, lambda_ic_new, ...
-    u_i1_new, sigma_i1_new, lambda_i1_new, u_i2_new, sigma_i2_new, lambda_i2_new)
+        u_c_new, sigma_c_new, lambda_c_new, u_ic_new, sigma_ic_new, lambda_ic_new, ...
+        u_i1_new, sigma_i1_new, lambda_i1_new, u_i2_new, sigma_i2_new, lambda_i2_new)
 
 
     u_c_new  = (sum( Rs1c  .* (s1 - Vc1  * Delta_c ) ) + ...
@@ -361,17 +320,10 @@ while abs(ll - prev_ll) > tolerance
     u_i2_new = (sum( Rs2i2 .* (s2 - Vi22 * Delta_i2) )) / (sum_Rs2i2);
     u_ic2_new = (sum( Rs2ic2 .* (s2 - Vic22 * Delta_ic2) )) / (sum_Rs2ic2);
     
-    if u_i2_new > u_i1_new
-        u_i2_new = u_i1_new;
-    end
+    % if u_i2_new > u_i1_new
+    %     u_i2_new = u_i1_new;
+    % end
     
-
-    u_c_new = param_bin_search(u_c, u_c_new, @(x, fuzzy) param_c_ic_check_func('u_1', x, fuzzy));
-    u_ic_new = param_bin_search(u_ic, u_ic_new, @(x, fuzzy) param_c_ic_check_func('u_2',  x, fuzzy));
-    u_ic_new = param_bin_search(u_ic, u_ic_new, @(x, fuzzy) param_ic_i1_check_func('u_1', x, fuzzy));
-    u_i1_new = param_bin_search(u_i1, u_i1_new, @(x, fuzzy) param_ic_i1_check_func('u_2', x, fuzzy));
-    u_i1_new = param_bin_search(u_i1, u_i1_new, @(x, fuzzy) param_i1_i2_check_func('u_1', x, fuzzy));
-    u_i2_new = param_bin_search(u_i2, u_i2_new, @(x, fuzzy) param_i1_i2_check_func('u_2', x, fuzzy));
 
     ll = func_ll2_4i_xl(s1, s2, ws, ...
         u_c_new, sigma_c_new, lambda_c_new, u_ic_new, sigma_ic_new, lambda_ic_new, ...
@@ -438,37 +390,33 @@ while abs(ll - prev_ll) > tolerance
         u_i1_new, sigma_i1_new, lambda_i1_new, u_i2_new, sigma_i2_new, lambda_i2_new)
 
     
-    sigma_c_new = param_bin_search(sigma_c, sigma_c_new, @(x, fuzzy) param_c_ic_check_func('sigma_1', x, fuzzy));
-    sigma_ic_new = param_bin_search(sigma_ic, sigma_ic_new, @(x, fuzzy) param_c_ic_check_func('sigma_2', x, fuzzy));
-    sigma_ic_new = param_bin_search(sigma_ic, sigma_ic_new, @(x, fuzzy) param_ic_i1_check_func('sigma_1', x, fuzzy));
-    sigma_i1_new = param_bin_search(sigma_i1, sigma_i1_new, @(x, fuzzy) param_ic_i1_check_func('sigma_2', x, fuzzy));
-    sigma_i1_new = param_bin_search(sigma_i1, sigma_i1_new, @(x, fuzzy) param_i1_i2_check_func('sigma_1', x, fuzzy));
-    sigma_i2_new = param_bin_search(sigma_i2, sigma_i2_new, @(x, fuzzy) param_i1_i2_check_func('sigma_2', x, fuzzy));
+    params_new = pack_params(ws, ...
+        u_c_new, sigma_c_new, lambda_c_new, ...
+        u_ic_new, sigma_ic_new, lambda_ic_new, ...
+        u_ic2_new, sigma_ic2_new, lambda_ic2_new, ...
+        u_i1_new, sigma_i1_new, lambda_i1_new, ...
+        u_i2_new, sigma_i2_new, lambda_i2_new);
 
-    lambda_c_new = param_bin_search(lambda_c, lambda_c_new, @(x, fuzzy) param_c_ic_check_func('lambda_1', x, fuzzy));
-    lambda_ic_new = param_bin_search(lambda_ic, lambda_ic_new, @(x, fuzzy) param_c_ic_check_func('lambda_2', x, fuzzy));
-    lambda_ic_new = param_bin_search(lambda_ic, lambda_ic_new, @(x, fuzzy) param_ic_i1_check_func('lambda_1', x, fuzzy));
-    lambda_i1_new = param_bin_search(lambda_i1, lambda_i1_new, @(x, fuzzy) param_ic_i1_check_func('lambda_2', x, fuzzy));
-    lambda_i1_new = param_bin_search(lambda_i1, lambda_i1_new, @(x, fuzzy) param_i1_i2_check_func('lambda_1', x, fuzzy));
-    lambda_i2_new = param_bin_search(lambda_i2, lambda_i2_new, @(x, fuzzy) param_i1_i2_check_func('lambda_2', x, fuzzy));
+    params = param_rand_search(params, params_new, param_check_func, ll_func, 100);
+
     
-    u_c   = u_c_new;
-    u_ic  = u_ic_new;
-    u_i1  = u_i1_new;
-    u_i2  = u_i2_new;
-    u_ic2 = u_ic2_new;
-
-	sigma_c = sigma_c_new;
-	sigma_ic = sigma_ic_new;
-	sigma_i1 = sigma_i1_new;
-	sigma_i2 = sigma_i2_new;
-	sigma_ic2 = sigma_ic2_new;
-
-	lambda_c = lambda_c_new;
-	lambda_ic = lambda_ic_new;
-	lambda_i1 = lambda_i1_new;
-	lambda_i2 = lambda_i2_new;
-	lambda_ic2 = lambda_ic2_new;
+    % u_c   = u_c_new;
+    % u_ic  = u_ic_new;
+    % u_i1  = u_i1_new;
+    % u_i2  = u_i2_new;
+    % u_ic2 = u_ic2_new;
+    % 
+	% sigma_c = sigma_c_new;
+	% sigma_ic = sigma_ic_new;
+	% sigma_i1 = sigma_i1_new;
+	% sigma_i2 = sigma_i2_new;
+	% sigma_ic2 = sigma_ic2_new;
+    % 
+	% lambda_c = lambda_c_new;
+	% lambda_ic = lambda_ic_new;
+	% lambda_i1 = lambda_i1_new;
+	% lambda_i2 = lambda_i2_new;
+	% lambda_ic2 = lambda_ic2_new;
     
 end
 
@@ -492,6 +440,14 @@ function [u, sigma] = unpack2(theta)
     sigma = theta(2);
 end
 
+function theta = pack_skntheta(u, sigma, lambda)
+    theta = [u, sigma, lambda];
+end
+
+function [u, sigma, lambda] = unpack_skntheta(theta)
+    [u, sigma, lambda] = unpack3(theta);
+end
+
 function params = pack_params(ws, ...
         u_c, sigma_c, lambda_c, ...
         u_ic, sigma_ic, lambda_ic, ...
@@ -503,47 +459,64 @@ function params = pack_params(ws, ...
     theta_ic2 = pack_skntheta(u_ic2, sigma_ic2, lambda_ic2);
     theta_i1 = pack_skntheta(u_i1, sigma_i1, lambda_i1);
     theta_i2 = pack_skntheta(u_i2, sigma_i2, lambda_i2);
-    params = {ws, [theta_c, theta_ic, theta_ic2, theta_i1, theta_i2]};
+    % params = {ws, [theta_c, theta_ic, theta_ic2, theta_i1, theta_i2]};
+    params = [ws, theta_c, theta_ic, theta_ic2, theta_i1, theta_i2];
 end
 
-function [w1c, w1ic, w1i1, w2c, w2ic, w2ic2, w2i1, w2i2] = get_weights(params)
-    ws = params{1};
-    [w1c, w1ic, w1i1, w2c, w2ic, w2ic2, w2i1, w2i2] = unpack8(ws);
+% function [w1c, w1ic, w1i1, w2c, w2ic, w2ic2, w2i1, w2i2] = get_weights(params)
+%     ws = params(1:8);
+%     [w1c, w1ic, w1i1, w2c, w2ic, w2ic2, w2i1, w2i2] = unpack8(ws);
+% end
+
+function ws = get_weights(params)
+    ws = params(1:8);
 end
 function [u, sigma, lambda] = get_component_params(params, component)
     d = dictionary(["c" "ic" "ic2" "i1" "i2"], int8([1, 2, 3, 4, 5]));
-    theta = params{2};
-    [u, sigma, lambda] = unpack_skntheta(theta(d(component)));
+    theta = params(9:end);
+    component_start = (d(component) - 1) * 3 + 1;
+    theta_i = theta(component_start:component_start+2);
+    [u, sigma, lambda] = unpack_skntheta(theta_i);
 end
 
 function ll_func = make_ll_func(s1, s2)
-function ll = param_ll_func(params)
-    ws = params{1};
-    u_c,   sigma_c,   lambda_c   = get_component_param(params, "c");
-    u_ic,  sigma_ic,  lambda_ic  = get_component_param(params, "ic");
-    u_ic2, sigma_ic2, lambda_ic2 = get_component_param(params, "ic2");
-    u_i1,  sigma_i1,  lambda_i1  = get_component_param(params, "i1");
-    u_i2,  sigma_i2,  lambda_i2  = get_component_param(params, "i2");
-    
-    ll = func_ll2_5i_xl(s1, s2, ws, ...
-        u_c_new,   sigma_c_new,   lambda_c_new, ...
-        u_ic_new,  sigma_ic_new,  lambda_ic_new, ...
-        u_ic2_new, sigma_ic2_new, lambda_ic2_new, ...
-        u_i1_new,  sigma_i1_new,  lambda_i1_new, ...
-        u_i2_new,  sigma_i2_new,  lambda_i2_new)
-end
-ll_func = @param_check_func;
+    function ll = param_ll_func(params)
+        ws = get_weights(params);
+        [u_c,   sigma_c,   lambda_c  ] = get_component_params(params, "c");
+        [u_ic,  sigma_ic,  lambda_ic ] = get_component_params(params, "ic");
+        [u_ic2, sigma_ic2, lambda_ic2] = get_component_params(params, "ic2");
+        [u_i1,  sigma_i1,  lambda_i1 ] = get_component_params(params, "i1");
+        [u_i2,  sigma_i2,  lambda_i2 ] = get_component_params(params, "i2");
+        
+        ll = func_ll2_5i_xl(s1, s2, ws, ...
+            u_c,   sigma_c,   lambda_c, ...
+            u_ic,  sigma_ic,  lambda_ic, ...
+            u_ic2, sigma_ic2, lambda_ic2, ...
+            u_i1,  sigma_i1,  lambda_i1, ...
+            u_i2,  sigma_i2,  lambda_i2);
+    end
+    ll_func = @param_ll_func;
 end
 
 function cond_func = make_param_check_func(s1, s2, constraints)
 %
+% For now: ["pdf" "cdf"]
 % "pdf c  > ic [w_c w_ic]" : pdf_c(x) > pdf_ic(x) for x > mode(c)
 % "cdf ic > i1 [<fuzzy>]" : cdf_ic(x) - cdf_i1(x) > -<fuzzy>
 % 
+    check_pdf = false;
+    check_cdf = false;
 
-    function flag = pdf_helper(x, component1, component2, w1, w2, params, fuzzy)
-        u_1, sigma_1, lambda_1 = get_component_param(params, component1);
-        u_2, sigma_2, lambda_2 = get_component_param(params, component2);
+    for c = constraints
+        if c == "pdf"
+            check_pdf = true;
+        elseif c == "cdf"
+            check_cdf = true;
+        end
+    end
+    function flag = pdf_helper(x, component1, component2, w_1, w_2, params, fuzzy)
+        [u_1, sigma_1, lambda_1] = get_component_params(params, component1);
+        [u_2, sigma_2, lambda_2] = get_component_params(params, component2);
             
         mode_1 = skew_norm_mode(u_1, sigma_1, lambda_1);
         x_pdf = x(x>mode_1);
@@ -554,38 +527,71 @@ function cond_func = make_param_check_func(s1, s2, constraints)
             u_2, sigma_2, lambda_2, ...
             fuzzy);
     end
+    function flag = cdf_helper(x, component1, component2, params, fuzzy)
+        [u_1, sigma_1, lambda_1] = get_component_params(params, component1);
+        [u_2, sigma_2, lambda_2] = get_component_params(params, component2);
 
-function cond = param_check_func(params)
-    ws = params{1};
-    u_c,   sigma_c,   lambda_c   = get_component_param(params, "c");
-    u_ic,  sigma_ic,  lambda_ic  = get_component_param(params, "ic");
-    u_ic2, sigma_ic2, lambda_ic2 = get_component_param(params, "ic2");
-    u_i1,  sigma_i1,  lambda_i1  = get_component_param(params, "i1");
-    u_i2,  sigma_i2,  lambda_i2  = get_component_param(params, "i2");
-
-    flag1 = pdf_helper(s1, "c", "ic", 1, 1, params, 0);
-    if ~flag1
-        cond = false;
-        return
-    end
-    flag2 = pdf_helper(s1, "ic", "i1", 1, 1, params, 0);
-    if ~flag2
-        cond = false;
-        return
-    end
-    flag3 = pdf_helper(s2, "ic1", "ic2", 1, 1, params, 0);
-    if ~flag3
-        cond = false;
-        return
-    end
-    flag4 = pdf_helper(s2, "i1", "i2", 1, 1, params, 0);
-    if ~flag4
-        cond = false;
-        return
+        flag = check_skewnorm_cdf_higher(x, ...
+            u_1, sigma_1, lambda_1, ...
+            u_2, sigma_2, lambda_2, ...
+            fuzzy * 5e3);
     end
     
+    function cond = param_check_func(params)
+        ws = get_weights(params);
+        % [u_c,   sigma_c,   lambda_c  ] = get_component_params(params, "c");
+        % [u_ic,  sigma_ic,  lambda_ic ] = get_component_params(params, "ic");
+        % [u_ic2, sigma_ic2, lambda_ic2] = get_component_params(params, "ic2");
+        % [u_i1,  sigma_i1,  lambda_i1 ] = get_component_params(params, "i1");
+        % [u_i2,  sigma_i2,  lambda_i2 ] = get_component_params(params, "i2");
+    
+        fuzzy = 0;
+        % flags = [];
 
-end
+        if check_pdf
+            flag = pdf_helper(s1, "c", "ic", 1, 1, params, fuzzy);
+            if ~flag
+                cond = false;
+                return
+            end
+            flag = pdf_helper(s1, "ic", "i1", 1, 1, params, fuzzy);
+            if ~flag
+                cond = false;
+                return
+            end
+            % flag = pdf_helper(s2, "ic1", "ic2", 1, 1, params, fuzzy);
+            % if ~flag
+            %     cond = false;
+            %     return
+            % end
+            flag = pdf_helper(s2, "i1", "i2", 1, 1, params, fuzzy);
+            if ~flag
+                cond = false;
+                return
+            end
+        end
+    
+        if check_cdf
+            flag = cdf_helper(s1, "c", "ic", params, 1e-4);
+            if ~flag
+                cond = false;
+                return
+            end
+            flag = cdf_helper(s1, "ic", "i1", params, 1e-4);
+            if ~flag
+                cond = false;
+                return
+            end
+            flag = cdf_helper(s2, "i1", "i2", params, 1e-4);
+            if ~flag
+                cond = false;
+                return
+            end
+        end
+        cond = true;
+        
+    end
+    cond_func = @param_check_func;
 end
 
 

@@ -1,6 +1,6 @@
 
 datasets = {
-    'Alinden';
+    % 'Alinden';
     'ecoli_xl';
     'MS2000225';
     'alban';
@@ -11,19 +11,14 @@ datasets = {
     'QE';
     'D1810';
     'peplib';
-    % 'Gordon';
+    'Gordon';
 };
 
-fails = cell(1,numel(datasets));
+fails = {};
 
-fig_dir = 'figures_less_c2_ic2_pdf_cdf_free_ic2';
-
-
-parfor i = 1:numel(datasets)
+for i = 1:size(datasets)
     dataset_name = datasets{i};
-    dataset_fails = {};
-    dataset = load(['../results/matdata/scoremats/', dataset_name, '.mat']);
-    mat = dataset.mat;
+    load(['../results/matdata/scoremats/', dataset_name, '.mat']);
     mat2 = mat(:,mat(2,:)~=0);
     best_ll = -inf;
 
@@ -35,7 +30,7 @@ parfor i = 1:numel(datasets)
     info_file = sprintf('%s%s.json', '../results/info/', dataset_name);
     info = load_json(info_file)
 
-    d = sprintf(['../' fig_dir '/%s'], dataset_name);
+    d = sprintf('../figures_less_c2_ic2/%s', dataset_name);
     if ~exist(d)
         mkdir(d);
     else
@@ -59,17 +54,17 @@ parfor i = 1:numel(datasets)
             % [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic_rands(mat2, ...
             %     sl1,sl2,sl3,sl4,sl5,'tolerance',1e-4,'c_range',0.3, ...
             %     'constraints', []);
-            [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic(mat2, ...
+            % [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic(mat2, ...
+            %     sl1,sl2,sl3,sl4,sl5,'tolerance',1e-4,'c_range',0.3, ...
+            %     'constraints', ["pdf"]);
+            [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic_rands(mat2, ...
                 sl1,sl2,sl3,sl4,sl5,'tolerance',1e-4,'c_range',0.3, ...
                 'constraints', ["pdf" "cdf"]);
             % [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic_rands(mat2, ...
             %     sl1,sl2,sl3,sl4,sl5,'tolerance',1e-4,'c_range',0.3, ...
-            %     'constraints', ["pdf"]);
-            % [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic_rands(mat2, ...
-            %     sl1,sl2,sl3,sl4,sl5,'tolerance',1e-4,'c_range',0.3, ...
             %     'constraints', ["cdf"]);
         catch ME
-            dataset_fails{end+1} = ti;
+            fails{end+1} = ti;
             continue
         end
         if ll > best_ll
@@ -157,8 +152,6 @@ parfor i = 1:numel(datasets)
     filename = sprintf('%s/best.png', d);
     saveas(gcf, filename);
     close all;
-
-    fails{i} = dataset_fails;
 %     EM1_3i_xl(mat, 1, -1, -1)
 %     EM2_4_xl(mat,1,-1,-1,-1)
 %     EM2_7j_xl(mat2,1,1,-1,-1)
@@ -173,11 +166,6 @@ parfor i = 1:numel(datasets)
 %     figure;
 %     plot(dlls)
 end
-
-% shell_script = ['cd ../' fig_dir ' ; i=1; for d in $(find -mindepth 1 -type d); do cp $d/best.png $i.png ; ((i++)) ; done'];
-ENVS = ['set PATH=G:\msys64\usr\bin;%PATH%'];
-shell_script = ['cd .. && ' ENVS ' && bash ./copy_best_figures.sh ' fig_dir];
-system(shell_script);
 
 function s = get_sign(j, d)
 d = d - 1;

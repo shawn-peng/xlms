@@ -63,12 +63,12 @@ yi2 = skew_norm_pdf(x_values, u_i2, sigma_i2, lambda_i2);
 y2 = w2ic*yic + w2ic2*yic2 + w2i1*yi1 + w2c*yc + w2i2*yi2;
 plot(x_values,yc*w2c,'LineWidth',2);
 plot(x_values,yic*w2ic,'LineWidth',2, 'LineStyle', '--');
-plot(x_values,yic2*w2ic2,'LineWidth',2, 'LineStyle', '-.');
 plot(x_values,yi1*w2i1,'LineWidth',2);
+plot(x_values,yic2*w2ic2,'LineWidth',2, 'LineStyle', '-.');
 plot(x_values,yi2*w2i2,'LineWidth',2, 'LineStyle', ':');
 plot(x_values,y2,'LineWidth',2);
 histogram(s2,100,'Normalization','pdf', 'FaceColor', 'none');
-legend({'dist\_correct'; 'dist\_half\_incorrect'; 'dist\_half\_incorrect2'; 'dist\_incorrect'; 'dist\_i2'; 'mixture'; 'hist\_second'});
+legend({'dist\_correct'; 'dist\_half\_incorrect'; 'dist\_incorrect'; 'dist\_half\_incorrect2'; 'dist\_i2'; 'mixture'; 'hist\_second'});
 
 xlim([0, maxS]);
 % plot(x_values,yi2*w2i1,'LineWidth',2, 'LineStyle', ':');
