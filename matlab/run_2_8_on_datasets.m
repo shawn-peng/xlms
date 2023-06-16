@@ -26,6 +26,8 @@ for i = 1:numel(datasets)
     mat = dataset.mat;
     mat2 = mat(:,mat(2,:)~=0);
     best_ll = -inf;
+    best_params = {};
+    best_sls = [];
 
     s1 = mat2(1,:);
     s1 = sort(s1, 'descend');
@@ -36,7 +38,7 @@ for i = 1:numel(datasets)
     info = load_json(info_file)
 
     d = sprintf(['../' fig_dir '/%s'], dataset_name);
-    if ~exist(d)
+    if ~exist(d, 'dir')
         mkdir(d);
     else
         delete([d, '/*']);
