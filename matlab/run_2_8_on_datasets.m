@@ -16,10 +16,10 @@ datasets = {
 
 fails = cell(1,numel(datasets));
 
-fig_dir = 'figures_less_c2_ic2_pdf_cdf_free_ic2';
+fig_dir = 'figures_less_c2_ic2_pdf_cdf_free_ic2_test';
 
 
-parfor i = 1:numel(datasets)
+for i = 1:numel(datasets)
     dataset_name = datasets{i};
     dataset_fails = {};
     dataset = load(['../results/matdata/scoremats/', dataset_name, '.mat']);
@@ -84,9 +84,9 @@ parfor i = 1:numel(datasets)
         theta = params{2};
         [u_c, sigma_c, lambda_c] = unpack_skntheta(theta(1));
         [u_ic, sigma_ic, lambda_ic] = unpack_skntheta(theta(2));
-        [u_ic2, sigma_ic2, lambda_ic2] = unpack_skntheta(theta(3));
-        [u_i1, sigma_i1, lambda_i1] = unpack_skntheta(theta(4));
-        [u_i2, sigma_i2, lambda_i2] = unpack_skntheta(theta(5));
+        [u_i1, sigma_i1, lambda_i1] = unpack_skntheta(theta(3));
+        [u_i2, sigma_i2, lambda_i2] = unpack_skntheta(theta(4));
+        [u_ic2, sigma_ic2, lambda_ic2] = unpack_skntheta(theta(5));
         
         fdr = fdr_xl(s1, ...
             ws(1), ws(2), ws(3), ...
@@ -116,9 +116,9 @@ parfor i = 1:numel(datasets)
     theta = best_params{2};
     [u_c, sigma_c, lambda_c] = unpack_skntheta(theta(1));
     [u_ic, sigma_ic, lambda_ic] = unpack_skntheta(theta(2));
-    [u_ic2, sigma_ic2, lambda_ic2] = unpack_skntheta(theta(3));
-    [u_i1, sigma_i1, lambda_i1] = unpack_skntheta(theta(4));
-    [u_i2, sigma_i2, lambda_i2] = unpack_skntheta(theta(5));
+    [u_i1, sigma_i1, lambda_i1] = unpack_skntheta(theta(3));
+    [u_i2, sigma_i2, lambda_i2] = unpack_skntheta(theta(4));
+    [u_ic2, sigma_ic2, lambda_ic2] = unpack_skntheta(theta(5));
     plot_dist_i_xl_ic2_fn(mat2, '_s2_c4_xl', ws, ...
         u_c, sigma_c, lambda_c, ...
         u_ic, sigma_ic, lambda_ic, ...
