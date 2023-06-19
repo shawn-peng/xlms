@@ -13,6 +13,10 @@ function debug()
     yyaxis("right");
     plot_skewnorm_cdf(gca,x,u_1,sigma_1,lambda_1,w_11);
     plot_skewnorm_cdf(gca,x,u_2,sigma_2,lambda_2,w_12);
+    figure;
+    hold on;
+    plot_skewnorm(gca,x,u_1,sigma_1,lambda_1,w_21);
+    plot_skewnorm(gca,x,u_2,sigma_2,lambda_2,w_22);
 end
 
 check_pdf = false;

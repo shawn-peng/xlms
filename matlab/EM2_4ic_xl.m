@@ -164,13 +164,11 @@ if ~param_i1_i2_check_func('sigma_2', sigma_i2)
 %         sign(lambda_i1)*1e-7, lambda_i1, ...
 %         @(x) param_i1_i2_check_func('lambda_1', x));
 
-%     assert(param_i1_i2_check_func('sigma_2', sigma_i1));
-
-    u_i2 = param_bin_search( ...
-        -10, u_i2, ...
-        @(x) param_i1_i2_check_func('u_2', x));
-    if ~param_i1_i2_check_func('sigma_2', sigma_i1)
-        return
+%     assert(param_check_func('sigma_2', sigma_i1));
+    if ~param_check_func('sigma_2', sigma_i1)
+        u_i2 = param_bin_search( ...
+            0, u_i2, ...
+            @(x) param_check_func('u_2', x));
     end
 
     % if ~param_i1_i2_check_func('lambda_2', 0)
