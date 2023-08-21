@@ -1,8 +1,17 @@
-function [alpha, u_c, sigma_c, lambda_c, u_i1, sigma_i1, lambda_i1] = EM2_1(S,sl1,sl2)
+function [alpha, u_c, sigma_c, lambda_c, u_i1, sigma_i1, lambda_i1] = EM2_1(S,sl1,sl2,varargin)
 %EM The EM algorithm to estimate parameters
 %   f1 = alpha*fc + (1-alpha)*fi1
 % tollerance = 1e-8;
-tollerance = 1e-8;
+
+parser = inputParser;
+addParameter(parser, 'tolerance', 1e-8);
+addParameter(parser, 'prior_thres', 20);
+
+
+parse(parser, varargin{:});
+tolerance       = parser.Results.tolerance;
+prior_thres     = parser.Results.prior_thres;
+
 [N, M] = size(S);
 
 ll = 0;
@@ -12,7 +21,6 @@ S1_sorted = sort(S(1,:), 'descend');
 % S2_sorted = sort(S(2,:), 'descend');
 % S_sorted = S;
 
-prior_thres = 20;
 nc1 = sum(S1_sorted > prior_thres);
 % nc2 = sum(S2_sorted > prior_thres);
 % alpha = 0.1;
@@ -31,7 +39,7 @@ M1 = size(s1,2);
 
 % figure('Position', [10,10,2000,500]);
 
-while abs(ll - prev_ll) > tollerance
+while abs(ll - prev_ll) > tolerance
     prev_ll = ll;
 
     ll = func_ll2_1(s1, alpha, u_c, sigma_c, lambda_c, u_i1, sigma_i1, lambda_i1);
