@@ -51,7 +51,8 @@ for i = 1:numel(datasets)
         sl3 = get_sign(j, 3);
         sl4 = get_sign(j, 4);
         sl5 = get_sign(j, 5);
-        if sl1 < 0 || sl2 < 0 || sl3 ~= sl4
+        % if sl1 < 0 || sl2 < 0 || sl3 ~= sl4
+        if sl1 <= 0 || sl2 <= 0 || sl3 ~= sl4
             continue
         end
 
@@ -63,7 +64,7 @@ for i = 1:numel(datasets)
             %     'constraints', []);
             [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic(mat2, ...
                 sl1,sl2,sl3,sl4,sl5,'tolerance',1e-4,'c_range',0.3, ...
-                'constraints', ["pdf" "cdf"]);
+                'constraints', []);
             % [params, ll, ll1] = EM2_5ic_xl_less_c2_2ic_rands(mat2, ...
             %     sl1,sl2,sl3,sl4,sl5,'tolerance',1e-4,'c_range',0.3, ...
             %     'constraints', ["pdf"]);

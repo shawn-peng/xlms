@@ -9,6 +9,8 @@ figures*/
 est_results_xl/
 
 .ipynb_checkpoints/
+*.pyc
+__pycache__/
 
 # Log
 log/
