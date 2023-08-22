@@ -41,7 +41,8 @@ class MixtureModelBase:
                 yj = self.weights[i][cname] * cdist.pdf(x)
                 plt.plot(x, yj, c='C%d' % idmap[cname])
                 legends.append(cname)
-                str_params = f'{cname}: mu={cdist.mu:.2f}({scdist.mu:.2f}),' \
+                str_params = f'{self.weights[i][cname]}' \
+                             f' {cname}: mu={cdist.mu:.2f}({scdist.mu:.2f}),' \
                              f' sigma={cdist.sigma:.2f}({scdist.sigma:.2f}),' \
                              f' alpha={cdist.alpha:.2f}({scdist.alpha:.2f})'
                 plt.text(xmin, ymax * (1 - 0.1 * (j + 1)), str_params)
