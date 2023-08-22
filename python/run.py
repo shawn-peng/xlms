@@ -47,8 +47,8 @@ model_samples = 2
 
 alpha_base = 0. if gaussian_model else 2.
 
-run_all = True
-# run_all = False
+# run_all = True
+run_all = False
 if run_all:
     show_plotting = False
 
@@ -110,7 +110,7 @@ def get_cons_str(constraints):
 
 
 model_class = f'{model_samples}S{"g" if gaussian_model else ""}{"2" if ic2_comp else ""}'
-base_figure_dir = f'figures_python_{model_class}_{config}_initskew_{alpha_base:%.0f}'
+base_figure_dir = f'figures_python_{model_class}_{config}_initskew_{alpha_base:.0f}'
 
 
 # base_figure_dir = f'figures_python_2S_{config}'
@@ -213,8 +213,8 @@ if __name__ == '__main__':
             res = list(pool.map(run_dataset, datasets))
     else:
         # run_dataset('KKT4')
-        # run_dataset('peplib')
-        run_dataset('Alinden')
+        run_dataset('peplib')
+        # run_dataset('Alinden')
         # run_dataset('ALott')
         # run_dataset('MS2000225')
     # subprocess.call(['C:\\cygwin64\\bin\\bash.exe', '-l', '../copy_best_figures.sh', base_figure_dir],
