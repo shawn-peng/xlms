@@ -35,8 +35,8 @@ datasets = [
 ]
 
 SAMPLE_SIZE = 20000
-ic2_comp = True
-# ic2_comp = False
+# ic2_comp = True
+ic2_comp = False
 tolerance = 1e-8
 show_plotting = True
 # show_plotting = False
@@ -44,6 +44,8 @@ plot_interval = 5
 # gaussian_model = True
 gaussian_model = False
 model_samples = 2
+
+alpha_base = 0. if gaussian_model else 2.
 
 run_all = True
 # run_all = False
@@ -86,10 +88,10 @@ settings = {
 }
 
 # config = 'common'
-# config = 'no_constraint'
+config = 'no_constraint'
 # config = 'weight_constraints'
 # config = 'unweighted_pdf'
-config = 'unweighted_cdf'
+# config = 'unweighted_cdf'
 # config = 'unweighted_pdf_cdf'
 # config = 'unweighted_pdf_no_weight_constraints'
 # config = 'unweighted_cdf_no_weight_constraints'
@@ -108,7 +110,7 @@ def get_cons_str(constraints):
 
 
 model_class = f'{model_samples}S{"g" if gaussian_model else ""}{"2" if ic2_comp else ""}'
-base_figure_dir = f'figures_python_{model_class}_{config}'
+base_figure_dir = f'figures_python_{model_class}_{config}_initskew_{alpha_base:%.0f}'
 
 
 # base_figure_dir = f'figures_python_2S_{config}'
@@ -181,8 +183,7 @@ def run_dataset(dataset_name):
             'model': model,
         }
 
-    alpha_base = 0. if gaussian_model else 5.
-    choices = [{'C': alpha_base, 'IC': alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base}]
+    choices = [{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base}]
     # choices = [{'C': 0, 'IC': 0, 'IC2': 0, 'I1': 0, 'I2': 0}]
     # pool = multiprocessing.Pool(32)
     models = list(map(run_model, choices))
@@ -207,6 +208,7 @@ def run_dataset(dataset_name):
 # pool = multiprocessing.Pool(10)
 if __name__ == '__main__':
     if run_all:
+        multiprocessing.set_start_method('spawn')
         with multiprocessing.Pool(10) as pool:
             res = list(pool.map(run_dataset, datasets))
     else:
@@ -219,3 +221,5 @@ if __name__ == '__main__':
     #                 cwd='../')
 
     print(base_figure_dir)
+    os.system(f'cd .. && ./copy_best_figures.sh {base_figure_dir}')
+
