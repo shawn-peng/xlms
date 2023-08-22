@@ -88,11 +88,11 @@ settings = {
 }
 
 # config = 'common'
-config = 'no_constraint'
+# config = 'no_constraint'
 # config = 'weight_constraints'
 # config = 'unweighted_pdf'
 # config = 'unweighted_cdf'
-# config = 'unweighted_pdf_cdf'
+config = 'unweighted_pdf_cdf'
 # config = 'unweighted_pdf_no_weight_constraints'
 # config = 'unweighted_cdf_no_weight_constraints'
 # config = 'unweighted_pdf_cdf_no_weight_constraints'
@@ -110,7 +110,7 @@ def get_cons_str(constraints):
 
 
 model_class = f'{model_samples}S{"g" if gaussian_model else ""}{"2" if ic2_comp else ""}'
-base_figure_dir = f'figures_python_{model_class}_{config}_initskew_{alpha_base:%.0f}'
+base_figure_dir = f'figures_python_{model_class}_{config}_initskew_{alpha_base:.0f}'
 
 
 # base_figure_dir = f'figures_python_2S_{config}'
