@@ -32,7 +32,7 @@ class SkewNormal:
         self.calc_alt_params()
         u_z = np.sqrt(2/np.pi) * self.delta
         sigma_z = np.sqrt(1 - u_z ** 2)
-        gamma_1 = (4 - np.pi) / 2 + (self.delta * np.sqrt(2 / np.pi)) ** 3 / (1 - 2 * self.delta ** 2 / np.pi) ** (3/2)
+        gamma_1 = (4 - np.pi) / 2 * (self.delta * np.sqrt(2 / np.pi)) ** 3 / (1 - 2 * self.delta ** 2 / np.pi) ** (3/2)
         m0 = u_z - gamma_1 * sigma_z / 2 + np.sign(self.alpha) / 2 * np.exp(-2 * np.pi / np.abs(self.alpha))
         mode = self.mu + self.sigma * m0
         return mode
