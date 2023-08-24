@@ -47,8 +47,8 @@ model_samples = 2
 
 alpha_base = 0. if gaussian_model else 2.
 
-run_all = True
-# run_all = False
+# run_all = True
+run_all = False
 if run_all:
     show_plotting = False
 
@@ -213,8 +213,8 @@ if __name__ == '__main__':
             res = list(pool.map(run_dataset, datasets))
     else:
         # run_dataset('KKT4')
-        # run_dataset('peplib')
-        run_dataset('Alinden')
+        run_dataset('peplib')
+        # run_dataset('Alinden')
         # run_dataset('ALott')
         # run_dataset('MS2000225')
     # subprocess.call(['C:\\cygwin64\\bin\\bash.exe', '-l', '../copy_best_figures.sh', base_figure_dir],
