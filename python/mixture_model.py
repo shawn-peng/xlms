@@ -41,7 +41,7 @@ class MixtureModel(MixtureModelBase):
 
         :param skew_dirs: skew directions
         :param ic2_comp: model IC2 component separately
-        :param constraint_types: options [ weights, pdf, cdf ]
+        :param constraints: options [ weights, mode, pdf, cdf, weighted_pdf ]
         :param tolerance: convergence threshold
         :param binwidth: binwidth for histogram plotting
         :param plotstep: step for the grid when plotting curves (e.g. pdf, cdf)
@@ -68,7 +68,7 @@ class MixtureModel(MixtureModelBase):
             ]
         self.n_samples = len(self.join_comps)
         self.constraints = constraints
-        constraint_types = constraints
+        # constraint_types = constraints
         # self.comp_rels = {
         #     'C': 'IC',
         #     'IC': 'I1',
@@ -90,10 +90,11 @@ class MixtureModel(MixtureModelBase):
             cname: 1 for cname in sorted(set(comps), key=lambda x: comp_id[x])
         } for comps in self.join_comps]
 
-        self.weight_constrained = 'weights' in constraint_types
-        self.pdf_constrained = 'pdf' in constraint_types
-        self.cdf_constrained = 'cdf' in constraint_types
-        self.weighted_pdf_constrained = 'weighted_pdf' in constraint_types
+        self.weight_constrained = 'weights' in constraints
+        self.mode_constrained = 'mode' in constraints
+        self.pdf_constrained = 'pdf' in constraints
+        self.cdf_constrained = 'cdf' in constraints
+        self.weighted_pdf_constrained = 'weighted_pdf' in constraints
         self.starting_pos = None
         self.lls = []
         self.ll = None
@@ -321,22 +322,31 @@ class MixtureModel(MixtureModelBase):
 
         self.starting_pos = deepcopy(self)
 
+        kwarg_constraints = {
+            'mode': self.mode_constrained,
+            'pdf': self.pdf_constrained,
+            'cdf': self.cdf_constrained,
+        }
         comp_constraints['C_IC'] = RelativeConstraint(self.all_comps['C'], self.all_comps['IC'],
-                                                      x_range=x, pdf=self.pdf_constrained,
+                                                      x_range=x, mode=self.mode_constrained,
+                                                      pdf=self.pdf_constrained,
                                                       cdf=self.cdf_constrained)
         comp_constraints['IC_C_w2'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['C'],
                                                          weights=(self.weights[1]['IC'], self.weights[1]['C']),
                                                          x_range=x, pdf=self.weighted_pdf_constrained,
-                                                         cdf=False)
+                                                         cdf=False, mode=False)
         if self.ic2_comp:
             comp_constraints['IC_IC2'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['IC2'],
-                                                            x_range=x, pdf=self.pdf_constrained,
+                                                            x_range=x, mode=self.mode_constrained,
+                                                            pdf=self.pdf_constrained,
                                                             cdf=self.cdf_constrained)
             comp_constraints['I1_I2'] = RelativeConstraint(self.all_comps['I1'], self.all_comps['I2'],
-                                                           x_range=x, pdf=self.pdf_constrained,
+                                                           x_range=x, mode=self.mode_constrained,
+                                                           pdf=self.pdf_constrained,
                                                            cdf=self.cdf_constrained)
         comp_constraints['IC_I1'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['I1'],
-                                                       x_range=x, pdf=self.pdf_constrained,
+                                                       x_range=x, mode=self.mode_constrained,
+                                                       pdf=self.pdf_constrained,
                                                        cdf=self.cdf_constrained)
 
         self.ll = self.log_likelihood(X)
