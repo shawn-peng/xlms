@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 
 
 class RelativeConstraint:
-    def __init__(self, right_dist, left_dist, x_range, weights=(1, 1), pdf=True, cdf=False):
+    def __init__(self, right_dist, left_dist, x_range, weights=(1, 1), mode=False, pdf=True, cdf=False):
         self.right_dist = right_dist
         self.left_dist = left_dist
         self.x_range = x_range
         self.weights = list(weights)
+        self.mode = mode
         self.pdf = pdf
         self.cdf = cdf
 
@@ -31,6 +32,11 @@ class RelativeConstraint:
         ax2.plot(self.x_range, cl - cr)
 
     def check(self, fuzzy=0):
+        if self.mode:
+            cond = self.right_dist.mode > self.left_dist.mode
+            if not cond:
+                return False
+
         if self.pdf:
             mode_right = self.right_dist.mode
             x_pdf = self.x_range[self.x_range > mode_right]
@@ -58,26 +64,6 @@ class RelativeConstraint:
 
     def getWeightChecker(self, comp):
         return WeightChecker(self, comp)
-
-    # def dist_check_func(self, dist):
-    #     def param_check_func(param_name):
-    #         def _check_func(param_val):
-    #             setattr(dist, param_name, param_val)
-    #             return self.check()
-    #         return _check_func
-    #     return param_check_func
-
-
-# def compose_constraints(constraints):
-# class ComposedConstraint:
-#     def __init__(self, constraints):
-#         self.constraints = constraints
-#
-#     def check(self):
-#         for cons in self.constraints:
-#             if not cons.check():
-#                 return False
-#         return True
 
 
 class WeightChecker:

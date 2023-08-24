@@ -35,8 +35,8 @@ datasets = [
 ]
 
 SAMPLE_SIZE = 20000
-# ic2_comp = True
-ic2_comp = False
+ic2_comp = True
+# ic2_comp = False
 tolerance = 1e-8
 show_plotting = True
 # show_plotting = False
@@ -85,6 +85,10 @@ settings = {
                                                  'show_plotting': show_plotting,
                                                  'plot_interval': plot_interval,
                                                  'constraints':   ['weights', 'pdf', 'cdf', 'weighted_pdf']},
+    'unweighted_pdf_cdf_mode':                  {'ic2_comp':      ic2_comp, 'tolerance': tolerance,
+                                                 'show_plotting': show_plotting,
+                                                 'plot_interval': plot_interval,
+                                                 'constraints':   ['weights', 'mode', 'pdf', 'cdf']},
 }
 
 # config = 'common'
@@ -96,9 +100,11 @@ config = 'unweighted_pdf_cdf'
 # config = 'unweighted_pdf_no_weight_constraints'
 # config = 'unweighted_cdf_no_weight_constraints'
 # config = 'unweighted_pdf_cdf_no_weight_constraints'
+config = 'unweighted_pdf_cdf_mode'
 
 map_cons_str = {
     'weights':      'w',
+    'mode':         'mode',
     'pdf':          'pdf',
     'cdf':          'cdf',
     'weighted_pdf': 'wpdf',
@@ -213,7 +219,8 @@ if __name__ == '__main__':
             res = list(pool.map(run_dataset, datasets))
     else:
         # run_dataset('KKT4')
-        run_dataset('peplib')
+        # run_dataset('peplib')
+        run_dataset('alban')
         # run_dataset('Alinden')
         # run_dataset('ALott')
         # run_dataset('MS2000225')
@@ -222,4 +229,3 @@ if __name__ == '__main__':
 
     print(base_figure_dir)
     os.system(f'cd .. && ./copy_best_figures.sh {base_figure_dir}')
-
