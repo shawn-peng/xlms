@@ -45,10 +45,10 @@ plot_interval = 5
 gaussian_model = False
 model_samples = 2
 
-alpha_base = 0. if gaussian_model else 2.
+alpha_base = 0. if gaussian_model else 5.
 
-# run_all = True
-run_all = False
+run_all = True
+# run_all = False
 if run_all:
     show_plotting = False
 
@@ -89,6 +89,10 @@ settings = {
                                                  'show_plotting': show_plotting,
                                                  'plot_interval': plot_interval,
                                                  'constraints':   ['weights', 'mode', 'pdf', 'cdf']},
+    'unweighted_pdf_mode':                      {'ic2_comp':      ic2_comp, 'tolerance': tolerance,
+                                                 'show_plotting': show_plotting,
+                                                 'plot_interval': plot_interval,
+                                                 'constraints':   ['weights', 'mode', 'pdf']},
 }
 
 # config = 'common'
@@ -96,11 +100,12 @@ settings = {
 # config = 'weight_constraints'
 # config = 'unweighted_pdf'
 # config = 'unweighted_cdf'
-config = 'unweighted_pdf_cdf'
+# config = 'unweighted_pdf_cdf'
 # config = 'unweighted_pdf_no_weight_constraints'
 # config = 'unweighted_cdf_no_weight_constraints'
 # config = 'unweighted_pdf_cdf_no_weight_constraints'
-config = 'unweighted_pdf_cdf_mode'
+config = 'unweighted_pdf_mode'
+# config = 'unweighted_pdf_cdf_mode'
 
 map_cons_str = {
     'weights':      'w',
