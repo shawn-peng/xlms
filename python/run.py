@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import os
+import sys
 import subprocess
 
 from mixture_model import MixtureModel
@@ -127,6 +128,8 @@ settings = {
 config = 'unweighted_pdf_weighted_pdf_mode'
 # config = 'unweighted_cdf_weighted_pdf_mode'
 # config = 'unweighted_pdf_cdf_weighted_pdf_mode'
+if len(sys.argv) > 1:
+    config = sys.argv[1]
 
 map_cons_str = {
     'weights':      'w',
