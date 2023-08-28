@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 from scipy import stats
 import numpy as np
-import skew_normal
+import skew_normal as skew_normal
+# import skew_normal_cupy as skew_normal
 import normal_gpu
 from constraints import *
 from param_binary_search import *
@@ -186,10 +187,10 @@ class MixtureModel(MixtureModelBase):
         self.weight_cons = {}
         for i in range(self.n_samples):
             for cs in zip(*self.join_comps):
-                self.weight_cons[f'{i+1}{cs[i]}'] = self.syms[f'w{i+1}{cs[i]}']
+                self.weight_cons[f'{i + 1}{cs[i]}'] = self.syms[f'w{i + 1}{cs[i]}']
         for i in range(self.n_samples):
             for cs in zip(*self.join_comps):
-                self.weight_cons[f'{i+1}{cs[i]}'] -= self.syms[f'w{2-i}{cs[1-i]}']
+                self.weight_cons[f'{i + 1}{cs[i]}'] -= self.syms[f'w{2 - i}{cs[1 - i]}']
 
         # for cname in self.comps[1].keys():
         #     i = ind2[cname]
@@ -211,7 +212,7 @@ class MixtureModel(MixtureModelBase):
         ineqs = []
         for i in range(self.n_samples):
             for cname in self.comps[i].keys():
-                ineqs.append(self.syms[f'w{i+1}{cname}'] >= 0)
+                ineqs.append(self.syms[f'w{i + 1}{cname}'] >= 0)
         self.pos_ws = ineqs
         self.Lag_sys_eqs = eqs + eqs3  # + ineqs + eqs2 + weight_cons
 
@@ -258,6 +259,7 @@ class MixtureModel(MixtureModelBase):
                 vals[self.syms[f'R{i + 1}{cname}']] = sumRs[i][j]
 
         flag = False
+        active_cons = 0
         for j, cname in enumerate(self.comps[1].keys()):
             # if self.weight_cons[j].subs(ws) <= 0:
             if self.weight_cons[f'2{cname}'].subs(ws) <= 0:
@@ -266,17 +268,21 @@ class MixtureModel(MixtureModelBase):
                 vals[self.syms[f'eta{2}{cname}']] = 0
             else:
                 flag = True
+                active_cons += 1
                 # sys_eqs.append(self.weight_cons[j])
                 sys_eqs.append(self.weight_cons[f'2{cname}'])
         if not flag:
             return res
+        if active_cons > 1:
+            print(f'got {active_cons} active constraints, might unable to find solution')
         sys_eqs += self.Lag_sys_eqs
         sys_eqs = list(map(lambda x: x.subs(vals), sys_eqs))
         solutions = sympy.solve(sys_eqs)
         solutions = [s for s in solutions if all(map(lambda x: x.subs(s), self.pos_ws))]
         if len(solutions) != 1:
-            print(f'failed to solve weights, got {len(solutions)} solutions')
-            assert 0
+            print(f'failed to solve weights, got {len(solutions)} solutions, return unconstrained weights')
+            return res
+
         solution = solutions[0]
         # print(solution)
         for i in range(self.n_samples):
@@ -294,7 +300,7 @@ class MixtureModel(MixtureModelBase):
 
     def fit(self, X):
         prev_ll = -np.inf
-        X = X[X[:, 1] != 0]
+        X = X[X[:, 1] != 0].astype(np.float32)
 
         n, d = X.shape
 
@@ -314,18 +320,19 @@ class MixtureModel(MixtureModelBase):
                     # mu = xmax - (xmax - xmin) / len(self.comps[i]) * (1 / 2 + j)
                     mu = X[:, 0].mean() + 0.5 * sigma - j * 0.5 * sigma
                     # self.comps[i][cname] = SN()
-                    self.weights[i][cname] = 1 / len(self.comps[i])
-                    self.comps[i][cname].mu = mu
-                    self.comps[i][cname].sigma = sigma
+                    self.weights[i][cname] = np.float32(1 / len(self.comps[i]))
+                    self.comps[i][cname].mu = np.float32(mu)
+                    self.comps[i][cname].sigma = np.float32(sigma)
 
-            self.weights[1]['C'] *= 0.05
+            self.weights[1]['C'] *= np.float32(0.05)
+            # self.weights[1]['C'] = np.float32(self.weights[1]['C'])
 
         self.starting_pos = deepcopy(self)
 
         kwarg_constraints = {
             'mode': self.mode_constrained,
-            'pdf': self.pdf_constrained,
-            'cdf': self.cdf_constrained,
+            'pdf':  self.pdf_constrained,
+            'cdf':  self.cdf_constrained,
         }
         comp_constraints['C_IC'] = RelativeConstraint(self.all_comps['C'], self.all_comps['IC'],
                                                       x_range=x, mode=self.mode_constrained,
@@ -340,6 +347,10 @@ class MixtureModel(MixtureModelBase):
                                                             x_range=x, mode=self.mode_constrained,
                                                             pdf=self.pdf_constrained,
                                                             cdf=self.cdf_constrained)
+            comp_constraints['IC_IC2_w2'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['IC2'],
+                                                               weights=(self.weights[1]['IC'], self.weights[1]['IC2']),
+                                                               x_range=x, pdf=self.weighted_pdf_constrained,
+                                                               cdf=False, mode=False)
             comp_constraints['I1_I2'] = RelativeConstraint(self.all_comps['I1'], self.all_comps['I2'],
                                                            x_range=x, mode=self.mode_constrained,
                                                            pdf=self.pdf_constrained,
@@ -412,6 +423,7 @@ class MixtureModel(MixtureModelBase):
                             comp_constraints['C_IC'].getDistChecker('left'),
                             comp_constraints['IC_C_w2'].getDistChecker('right'),
                             comp_constraints['IC_IC2'].getDistChecker('right'),
+                            comp_constraints['IC_IC2_w2'].getDistChecker('right'),
                             comp_constraints['IC_I1'].getDistChecker('right'),
                         )
                     else:
@@ -421,7 +433,10 @@ class MixtureModel(MixtureModelBase):
                             comp_constraints['IC_I1'].getDistChecker('right'),
                         )
                 elif cname == 'IC2':
-                    cons = comp_constraints['IC_IC2'].getDistChecker('left')
+                    cons = ComposedChecker(
+                        comp_constraints['IC_IC2'].getDistChecker('left'),
+                        comp_constraints['IC_IC2_w2'].getDistChecker('left'),
+                    )
                 elif cname == 'I1':
                     if self.ic2_comp:
                         cons = ComposedChecker(

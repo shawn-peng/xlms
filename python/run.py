@@ -45,10 +45,11 @@ plot_interval = 5
 gaussian_model = False
 model_samples = 2
 
-alpha_base = 0. if gaussian_model else 5.
+alpha_base = 0. if gaussian_model else 2.
 
-run_all = True
-# run_all = False
+# run_all = True
+run_all = False
+dataset_to_run = 'peplib'
 if run_all:
     show_plotting = False
 
@@ -93,6 +94,22 @@ settings = {
                                                  'show_plotting': show_plotting,
                                                  'plot_interval': plot_interval,
                                                  'constraints':   ['weights', 'mode', 'pdf']},
+    'unweighted_cdf_mode':                      {'ic2_comp':      ic2_comp, 'tolerance': tolerance,
+                                                 'show_plotting': show_plotting,
+                                                 'plot_interval': plot_interval,
+                                                 'constraints':   ['weights', 'mode', 'cdf']},
+    'unweighted_pdf_cdf_weighted_pdf_mode':     {'ic2_comp':      ic2_comp, 'tolerance': tolerance,
+                                                 'show_plotting': show_plotting,
+                                                 'plot_interval': plot_interval,
+                                                 'constraints':   ['weights', 'mode', 'pdf', 'cdf', 'weighted_pdf']},
+    'unweighted_pdf_weighted_pdf_mode':         {'ic2_comp':      ic2_comp, 'tolerance': tolerance,
+                                                 'show_plotting': show_plotting,
+                                                 'plot_interval': plot_interval,
+                                                 'constraints':   ['weights', 'mode', 'pdf', 'weighted_pdf']},
+    'unweighted_cdf_weighted_pdf_mode':         {'ic2_comp':      ic2_comp, 'tolerance': tolerance,
+                                                 'show_plotting': show_plotting,
+                                                 'plot_interval': plot_interval,
+                                                 'constraints':   ['weights', 'mode', 'cdf', 'weighted_pdf']},
 }
 
 # config = 'common'
@@ -104,8 +121,12 @@ settings = {
 # config = 'unweighted_pdf_no_weight_constraints'
 # config = 'unweighted_cdf_no_weight_constraints'
 # config = 'unweighted_pdf_cdf_no_weight_constraints'
-config = 'unweighted_pdf_mode'
+# config = 'unweighted_pdf_mode'
+# config = 'unweighted_cdf_mode'
 # config = 'unweighted_pdf_cdf_mode'
+config = 'unweighted_pdf_weighted_pdf_mode'
+# config = 'unweighted_cdf_weighted_pdf_mode'
+# config = 'unweighted_pdf_cdf_weighted_pdf_mode'
 
 map_cons_str = {
     'weights':      'w',
@@ -223,9 +244,10 @@ if __name__ == '__main__':
         with multiprocessing.Pool(10) as pool:
             res = list(pool.map(run_dataset, datasets))
     else:
+        run_dataset(dataset_to_run)
         # run_dataset('KKT4')
         # run_dataset('peplib')
-        run_dataset('alban')
+        # run_dataset('alban')
         # run_dataset('Alinden')
         # run_dataset('ALott')
         # run_dataset('MS2000225')

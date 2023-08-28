@@ -2,6 +2,7 @@ import numpy as np
 from scipy import stats
 from param_binary_search import *
 from normal_gpu import Normal
+from myutils import *
 
 
 def trunc_norm_moments(mu, sigma):
@@ -85,7 +86,8 @@ class SkewNormal:
         return new_sn
 
     def cdf(self, x):
-        return stats.skewnorm.cdf(x, self.alpha, self.mu, self.sigma)
+        r = stats.skewnorm.cdf(x, self.alpha, self.mu, self.sigma)
+        return r
 
     def pdf(self, x):
         # return stats.skewnorm.pdf(x, self.alpha, self.mu, self.sigma)
