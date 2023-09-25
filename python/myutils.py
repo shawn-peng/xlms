@@ -1,10 +1,57 @@
 import time
+import json
+import pprint
+
+import numpy as np
 
 
-class time_meter:
+class TimeMeter:
     def __init__(self):
         self.s = time.time_ns()
 
-    def meter(self):
+    def read(self):
         t = time.time_ns()
         return (t - self.s) / 1e6
+
+
+def truncate_zero(m):
+    flags = m == 0
+    m[flags] = m[~flags].min()
+
+
+class NamedArray(object):
+    def __init__(self, fields, val=0):
+        self.idx = {f: i for i, f in enumerate(fields)}
+        self.arr = np.zeros(len(self.idx))
+        self.arr[:] = val
+
+    def __getitem__(self, item):
+        idx = self.idx[item]
+        return self.arr[idx:idx + 1].squeeze()
+
+    def __setitem__(self, item, val):
+        idx = self.idx[item]
+        self.arr[idx] = val
+
+
+class AttrObj(object):
+    def __init__(self, attrs):
+        self.attrs = attrs
+
+    def __getstate__(self):
+        return self.attrs
+
+    def __setstate__(self, state):
+        self.attrs = state
+
+    def __getattr__(self, item):
+        if item in self.attrs:
+            return self.attrs[item]
+        # print(f'searching {item} in super')
+        return super().__getattr__(item)
+
+    def __str__(self):
+        return pprint.pformat(self.attrs, indent=2)
+
+    def __repr__(self):
+        return str(self)

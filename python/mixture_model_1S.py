@@ -7,6 +7,7 @@ from param_binary_search import *
 from mixture_model_base import MixtureModelBase
 from kanren import *
 import sympy
+from myutils import *
 
 from collections import defaultdict
 from typing import *
@@ -26,10 +27,13 @@ comp_id = {'C': 1, 'IC': 2, 'IC2': 3, 'I1': 4, 'I2': 5}
 
 class MixtureModel1S(MixtureModelBase):
     def __init__(self, skew_dirs,
+                 constraints=(),
                  tolerance=1e-4,
                  binwidth=2.5,
                  plotstep=0.1,
-                 show_plotting=False):
+                 show_plotting=False,
+                 plot_interval=1,
+                 **kwargs):
         """
 
         :param skew_dirs: skew directions
@@ -40,14 +44,18 @@ class MixtureModel1S(MixtureModelBase):
         :param plotstep: step for the grid when plotting curves (e.g. pdf, cdf)
         :param show_plotting: plot each step during running of the program
         """
+        super().__init__(**kwargs)
         self.tolerance = tolerance
         self.binwidth = binwidth
         self.plotstep = plotstep
         self.show_plotting = show_plotting
+        self.plot_interval = plot_interval
         self.join_comps = [
             ['C', 'IC', 'I1'],
         ]
         self.n_samples = len(self.join_comps)
+        self.constraints = constraints
+        self.starting_pos = None
         # self.comp_rels = {
         #     'C': 'IC',
         #     'IC': 'I1',
@@ -65,6 +73,12 @@ class MixtureModel1S(MixtureModelBase):
             for cname, cdist in self.comps[i].items():
                 self.all_comps[cname] = cdist
 
+        self.weight_constrained = 'weights' in constraints
+        self.mode_constrained = 'mode' in constraints
+        self.pdf_constrained = 'pdf' in constraints
+        self.cdf_constrained = 'cdf' in constraints
+        self.weighted_pdf_constrained = 'weighted_pdf' in constraints
+
     def pred(self, X):
         X = np.array(X)
         n, d = X.shape
@@ -76,6 +90,7 @@ class MixtureModel1S(MixtureModelBase):
             for j, (cname, cdist) in enumerate(self.comps[i].items()):
                 pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
             p0 = np.sum(pj[i], 1).reshape((-1, 1))
+            truncate_zero(p0)
             p[i] = pj[i] / p0
         return p
 
@@ -96,11 +111,43 @@ class MixtureModel1S(MixtureModelBase):
 
         return res
 
+    def create_constraints(self):
+        x = self.xrange
+        relative_constraints = {}
+        self.relative_constraints = relative_constraints
+
+        relative_constraints['C_IC'] = RelativeConstraint(self.all_comps['C'], self.all_comps['IC'],
+                                                          x_range=x, mode=self.mode_constrained,
+                                                          pdf=self.pdf_constrained,
+                                                          cdf=self.cdf_constrained)
+        relative_constraints['IC_I1'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['I1'],
+                                                           x_range=x, mode=self.mode_constrained,
+                                                           pdf=self.pdf_constrained,
+                                                           cdf=self.cdf_constrained)
+        comp_constraints = {}
+        self.comp_constraints = comp_constraints
+        # if cname == 'C':
+        comp_constraints['C'] = ComposedChecker(
+            relative_constraints['C_IC'].getDistChecker('right'),
+        )
+        # elif cname == 'IC':
+        comp_constraints['IC'] = ComposedChecker(
+            relative_constraints['C_IC'].getDistChecker('left'),
+            relative_constraints['IC_I1'].getDistChecker('right'),
+        )
+        # elif cname == 'I1':
+        comp_constraints['I1'] = ComposedChecker(
+            relative_constraints['IC_I1'].getDistChecker('left'),
+        )
+
+
     def fit(self, X):
         prev_ll = -np.inf
         X = X[X[:, 1] != 0]
 
         n, d = X.shape
+
+        self.init_range(X)
 
         xmax = np.max(X)
         xmin = np.min(X)
@@ -110,8 +157,6 @@ class MixtureModel1S(MixtureModelBase):
         x = np.arange(xmin, xmax + xstep, xstep)
         sigma = np.sqrt(X[:, 0].var())
 
-        comp_constraints = {}
-
         for i in range(len(self.comps)):
             for j, (cname, _) in enumerate(self.comps[i].items()):
                 # mu = xmax - (xmax - xmin) / len(self.comps[i]) * (1 / 2 + j)
@@ -120,17 +165,22 @@ class MixtureModel1S(MixtureModelBase):
                 self.weights[i][cname] = 1 / len(self.comps[i])
                 self.comps[i][cname].mu = mu
                 self.comps[i][cname].sigma = sigma / 3
+                self.comps[i][cname].calc_alt_params()
 
-        ll = self.log_likelihood(X)
-        lls = [ll]
-        slls = self.sep_log_likelihood(X)
-        plt.figure(figsize=[18, 9])
+        self.create_constraints()
+        self.starting_pos = self.frozen()
+
+        self.ll = self.log_likelihood(X)
+        self.lls = [self.ll]
+        self.slls = self.sep_log_likelihood(X)
+        # plt.figure(figsize=[18, 9])
         if self.show_plotting:
-            plt.ion()
-            plt.show()
-            self.plot(X, lls, slls)
-        while abs(ll - prev_ll) > self.tolerance:
-            prev_ll = ll
+            # plt.ion()
+            # plt.show()
+            self.plot(X, self.lls, self.slls)
+        prev_t = time.time()
+        while abs(self.ll - prev_ll) > self.tolerance:
+            prev_ll = self.ll
             rs = self.pred(X)
 
             # sum_rs = []
@@ -149,18 +199,29 @@ class MixtureModel1S(MixtureModelBase):
             for cname, (cdist, xs, rs) in d.items():
 
                 # new_dist = cdist.iterfit(np.array(xs), np.array(rs), cons)
-                cdist.iterfit(np.array(xs), np.array(rs))
+                # cdist.iterfit(np.array(xs), np.array(rs))
+                cdist.iterfit(np.array(xs), np.array(rs), self.comp_constraints[cname])
                 # self.all_comps[cname] = new_dist
                 # for i in range(len(self.comps)):
                 #     if cname in self.comps[i]:
                 #         self.comps[i][cname] = new_dist
 
-            ll = self.log_likelihood(X)
-            lls.append(ll)
-            slls = self.sep_log_likelihood(X)
-            if self.show_plotting:
-                self.plot(X, lls, slls)
+            self.ll = self.log_likelihood(X)
+            self.lls.append(self.ll)
+            self.slls = self.sep_log_likelihood(X)
+            meter = TimeMeter()
+            cur_t = time.time()
+            if self.show_plotting and cur_t - prev_t >= self.plot_interval:
+                # thread = threading.Thread(target=lambda : self.plot(X, self.lls, self.slls))
+                # thread = threading.Thread(target=update_fig)
+                # thread.start()
+                print('plotting...')
+                self.plot(X, self.lls, self.slls)
+                print('|', meter.read())
+                print('plot finished')
 
-        slls = self.sep_log_likelihood(X)
-        self.plot(X, lls, slls)
-        return ll, lls
+                prev_t = time.time()
+
+        self.slls = self.sep_log_likelihood(X)
+        self.plot(X, self.lls, self.slls)
+        return self.ll, self.lls

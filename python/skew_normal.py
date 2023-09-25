@@ -2,7 +2,9 @@ import numpy as np
 from scipy import stats
 from param_binary_search import *
 from normal_gpu import Normal
-from myutils import *
+# from myutils import *
+import matplotlib.pyplot as plt
+from plotting import *
 
 
 def trunc_norm_moments(mu, sigma):
@@ -34,7 +36,7 @@ class SkewNormal:
         u_z = np.sqrt(2/np.pi) * self.delta
         sigma_z = np.sqrt(1 - u_z ** 2)
         gamma_1 = (4 - np.pi) / 2 * (self.delta * np.sqrt(2 / np.pi)) ** 3 / (1 - 2 * self.delta ** 2 / np.pi) ** (3/2)
-        m0 = u_z - gamma_1 * sigma_z / 2 + np.sign(self.alpha) / 2 * np.exp(-2 * np.pi / np.abs(self.alpha))
+        m0 = u_z - gamma_1 * sigma_z / 2 - np.sign(self.alpha) / 2 * np.exp(-2 * np.pi / np.abs(self.alpha))
         mode = self.mu + self.sigma * m0
         return mode
 
@@ -60,6 +62,7 @@ class SkewNormal:
         if dist_cons:
             mu_test_func = dist_cons.get_param_checker('mu')
             mu = param_binary_search(self.mu, mu, mu_test_func)
+            # pass
         self.mu = mu
         # new_sn.mu = self.mu
         new_sn = SkewNormal(self.alpha, self.mu, self.sigma)
@@ -77,10 +80,21 @@ class SkewNormal:
             alpha_test_func = dist_cons.get_param_checker('alpha')
             new_sn.alpha = param_binary_search(self.alpha, new_sn.alpha, alpha_test_func)
             self.alpha = new_sn.alpha
+            # pass
+            # self.sigma = new_sn.sigma
+            # self.alpha = new_sn.alpha
+        else:
+            self.sigma = new_sn.sigma
+            self.alpha = new_sn.alpha
+        self.calc_alt_params()
+        # if dist_cons:
+        #     if not dist_cons(self, 2e-7):
+        #         print('Constraint violated')
+        #     else:
+        #         print('Constraint satisfied')
         # self.mu = new_sn.mu
         # self.sigma = new_sn.sigma
         # self.alpha = new_sn.alpha
-        self.calc_alt_params()
         if dist_cons:
             assert dist_cons(self, 2e-7)
         return new_sn

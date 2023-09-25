@@ -1,13 +1,17 @@
 from copy import copy, deepcopy
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class RelativeConstraint:
-    def __init__(self, right_dist, left_dist, x_range, weights=(1, 1), mode=False, pdf=True, cdf=False):
+    def __init__(self, right_dist, left_dist, x_range, weights=None, mode=False, pdf=True, cdf=False):
         self.right_dist = right_dist
         self.left_dist = left_dist
         self.x_range = x_range
-        self.weights = list(weights)
+        if weights is None:
+            self.weights = list(map(np.array, (1, 1)))
+        else:
+            self.weights = list(weights)
         self.mode = mode
         self.pdf = pdf
         self.cdf = cdf
@@ -44,6 +48,11 @@ class RelativeConstraint:
             pl = self.left_dist.pdf(x_pdf)
             # for wr, wl in self.weights:
             wr, wl = self.weights
+            # print('weights shape', wr.shape, wl.shape)
+            # if callable(wr):
+            #     wr = wr()
+            # if callable(wl):
+            #     wl = wl()
             # cond = wr * self.right_dist.pdf(x_pdf) >= wl * self.left_dist.pdf(x_pdf)
             cond = (wr * pr - wl * pl) >= -fuzzy
             if not cond.all():
@@ -79,8 +88,10 @@ class WeightChecker:
         # cons = copy(self.constraint)
         cons = self.constraint
         if self.comp == 'right':
+            # cons.weights[0][()] = w
             cons.weights[0] = w
         elif self.comp == 'left':
+            # cons.weights[1][()] = w
             cons.weights[1] = w
         return cons.check(fuzzy)
 
