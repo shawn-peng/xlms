@@ -40,7 +40,7 @@ datasets = [
 ]
 
 SAMPLE_SIZE = 20000
-tolerance = 1e-4
+tolerance = 1e-8
 show_plotting = True
 # show_plotting = False
 plot_interval = 5
@@ -51,15 +51,18 @@ ic2_comp = True
 # ic2_comp = False
 # init_strategy = None
 init_strategy = 'random'
+random_size = 20
 inner_parallel = True
+# inner_parallel = False
+num_workers = 20
 if init_strategy == 'random' and inner_parallel:
     show_plotting = False
 
 # alpha_base = 0. if gaussian_model else 2.
-alpha_bases = [0.] if gaussian_model else [1., 2.]
+alpha_bases = [0.] if gaussian_model else [1., 2., 5.]
 
-# run_all = True
-run_all = False
+run_all = True
+# run_all = False
 dataset_to_run = 'ecoli_xl'
 # dataset_to_run = 'Alinden'
 # dataset_to_run = 'MS2000225'
@@ -85,13 +88,17 @@ settings = {
     'unweighted_pdf':                           {**basic_settings, 'constraints': ['weights', 'pdf']},
     'unweighted_cdf':                           {**basic_settings, 'constraints': ['weights', 'cdf']},
     'unweighted_pdf_cdf':                       {**basic_settings, 'constraints': ['weights', 'pdf', 'cdf']},
-    'all_constraints':                          {**basic_settings, 'constraints': ['weights', 'pdf', 'cdf', 'weighted_pdf']},
+    'all_constraints':                          {**basic_settings,
+                                                 'constraints': ['weights', 'pdf', 'cdf', 'weighted_pdf']},
     'unweighted_pdf_cdf_mode':                  {**basic_settings, 'constraints': ['weights', 'mode', 'pdf', 'cdf']},
     'unweighted_pdf_mode':                      {**basic_settings, 'constraints': ['weights', 'mode', 'pdf']},
     'unweighted_cdf_mode':                      {**basic_settings, 'constraints': ['weights', 'mode', 'cdf']},
-    'unweighted_pdf_cdf_weighted_pdf_mode':     {**basic_settings, 'constraints': ['weights', 'mode', 'pdf', 'cdf', 'weighted_pdf']},
-    'unweighted_pdf_weighted_pdf_mode':         {**basic_settings, 'constraints': ['weights', 'mode', 'pdf', 'weighted_pdf']},
-    'unweighted_cdf_weighted_pdf_mode':         {**basic_settings, 'constraints': ['weights', 'mode', 'cdf', 'weighted_pdf']},
+    'unweighted_pdf_cdf_weighted_pdf_mode':     {**basic_settings,
+                                                 'constraints': ['weights', 'mode', 'pdf', 'cdf', 'weighted_pdf']},
+    'unweighted_pdf_weighted_pdf_mode':         {**basic_settings,
+                                                 'constraints': ['weights', 'mode', 'pdf', 'weighted_pdf']},
+    'unweighted_cdf_weighted_pdf_mode':         {**basic_settings,
+                                                 'constraints': ['weights', 'mode', 'cdf', 'weighted_pdf']},
 }
 
 # config = 'common'
@@ -148,21 +155,89 @@ base_figure_dir = None
 # for i:
 #   model[i].plot and save
 
+def capture_args(locals):
+    # return {k: locals[k] for k in ['dataset_name', 'dataset', 'res_dir']}
+    return [locals[k] for k in ['dataset_name', 'dataset', 'res_dir']]
+
+
+def run_model(sls, dataset_name, dataset, res_dir):
+    title = f"{dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
+    if model_samples == 1:
+        model = MixtureModel1S(sls, **settings[config], title=title)
+    elif model_samples == 2:
+        model = MixtureModel(sls, **settings[config], title=title)
+    # comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
+    comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
+    # comps = {'C': Norm(), 'IC': Norm(), 'I': Norm()}
+    # model = OrderStatMixtureModel(**settings['common'])
+    # ll, lls = model.fit(dataset.mat.T)
+    # model = pickle.load(open('temp_model.pickle', 'rb'))
+    # model.initialized = True
+    ll, lls = model.fit(dataset.mat.T)
+    try:
+        pass
+    except Exception as e:
+        print(f'Exception {traceback.format_exc()} happened for {dataset_name}, stopped at middle')
+        ll = model.ll
+        lls = model.lls
+        model.plot(dataset.mat.T, model.lls, model.slls)
+    # models[i]['ll'] = ll
+    # models[i]['lls'] = lls
+    # models[i]['sls'] = sls
+    # models[i]['model'] = model
+    # plt.subplot(3, 1, 1)
+    ax = plt.gcf().axes[0]
+    plt.axes(ax)
+    plt.title(f"{dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
+    plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
+    return {
+        'll':    ll,
+        'lls':   lls,
+        'sls':   sls,
+        'slls':  model.slls,
+        'model': model.frozen(),
+    }
+
+
+def run_rand_models(n, sls, dataset_name, dataset, res_dir):
+    if inner_parallel:
+        with multiprocessing.Pool(num_workers) as pool:
+            models = pool.starmap(run_model, ([(sls, dataset_name, dataset, res_dir)] * n))
+    else:
+        models = list(starmap(run_model, ([(sls, dataset_name, dataset, res_dir)] * n)))
+    models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
+    rand_dir = f"{res_dir}/random_{'_'.join(map(str, sls.values()))}/"
+    if not os.path.exists(rand_dir):
+        os.makedirs(rand_dir)
+    pickle.dump(models, open(f'{rand_dir}/models.pickle', 'wb'))
+    fig = plt.figure(figsize=(16, 9))
+    for i, model in enumerate(models):
+        fname = f'rank_{i + 1}.png'
+        MixtureModelBase._plot(dataset.mat.T, model['lls'], model['slls'], model['model'], fig)
+        ax = plt.gcf().axes[0]
+        plt.axes(ax)
+        plt.title(
+            f"{dataset_name} {model['sls']} ll={model['ll']:.05f}"
+            f" constraints={get_cons_str(settings[config]['constraints'])}")
+        plt.savefig(f'{rand_dir}/{fname}')
+    return models[0]
+
+
+def enum_signs(comps):
+    def get_signs(n, prefix):
+        if not n:
+            yield {cname: s for s, cname in zip(prefix, comps)}
+            return
+        yield from get_signs(n - 1, prefix + (+1,))
+        yield from get_signs(n - 1, prefix + (-1,))
+
+    yield from get_signs(len(comps), ())
+
 
 def run_dataset(dataset_name):
     global base_figure_dir
     base_figure_dir = f'figures_python_diffsign_{model_class}_{config}' \
                       f'_initskew_{"_".join([f"{alpha_base:.0f}" for alpha_base in alpha_bases])}'
-
-    def enum_signs(comps):
-        def get_signs(n, prefix):
-            if not n:
-                yield {cname: s for s, cname in zip(prefix, comps)}
-                return
-            yield from get_signs(n - 1, prefix + (+1,))
-            yield from get_signs(n - 1, prefix + (-1,))
-
-        yield from get_signs(len(comps), ())
 
     # res_dir = f'../figures_python_1S_{config}/{dataset_name}/'
     res_dir = f'../{base_figure_dir}/{dataset_name}/'
@@ -184,62 +259,6 @@ def run_dataset(dataset_name):
     # models = [{} for _ in range(len(choices))]
 
     # for i, sls in enumerate(choices):
-    def run_model(sls):
-        title = f"{dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
-        if model_samples == 1:
-            model = MixtureModel1S(sls, **settings[config], title=title)
-        elif model_samples == 2:
-            model = MixtureModel(sls, **settings[config], title=title)
-        # comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
-        comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
-        # comps = {'C': Norm(), 'IC': Norm(), 'I': Norm()}
-        # model = OrderStatMixtureModel(**settings['common'])
-        # ll, lls = model.fit(dataset.mat.T)
-        # model = pickle.load(open('temp_model.pickle', 'rb'))
-        # model.initialized = True
-        ll, lls = model.fit(dataset.mat.T)
-        try:
-            pass
-        except Exception as e:
-            print(f'Exception {traceback.format_exc()} happened for {dataset_name}, stopped at middle')
-            ll = model.ll
-            lls = model.lls
-            model.plot(dataset.mat.T, model.lls, model.slls)
-        # models[i]['ll'] = ll
-        # models[i]['lls'] = lls
-        # models[i]['sls'] = sls
-        # models[i]['model'] = model
-        # plt.subplot(3, 1, 1)
-        ax = plt.gcf().axes[0]
-        plt.axes(ax)
-        plt.title(f"{dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
-        plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
-        return {
-            'll':    ll,
-            'lls':   lls,
-            'sls':   sls,
-            'slls':  model.slls,
-            'model': model.frozen(),
-        }
-
-    def run_rand_models(n, sls):
-        models = list(map(run_model, [sls] * n))
-        models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
-        rand_dir = f"{res_dir}/random_{'_'.join(map(str, sls.values()))}/"
-        if not os.path.exists(rand_dir):
-            os.makedirs(rand_dir)
-        pickle.dump(models, open(f'{rand_dir}/models.pickle', 'wb'))
-        fig = plt.figure(figsize=(16, 9))
-        for i, model in enumerate(models):
-            fname = f'rank_{i + 1}.png'
-            MixtureModelBase._plot(dataset.mat.T, model['lls'], model['slls'], model['model'], fig)
-            ax = plt.gcf().axes[0]
-            plt.axes(ax)
-            plt.title(
-                f"{dataset_name} {model['sls']} ll={model['ll']:.05f}"
-                f" constraints={get_cons_str(settings[config]['constraints'])}")
-            plt.savefig(f'{rand_dir}/{fname}')
-        return models[0]
 
     # choices = [{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base}]
     choices = sum([[
@@ -250,11 +269,14 @@ def run_dataset(dataset_name):
     # choices = [{'C': 0, 'IC': 0, 'IC2': 0, 'I1': 0, 'I2': 0}]
     # pool = multiprocessing.Pool(32)
 
+    # kwargs = capture_args(locals())
+    args = capture_args(locals())
+
     # models = pickle.load(open(f'{res_dir}models.pickle', 'rb'))
     if init_strategy == 'random':
-        models = list(map(lambda sls: run_rand_models(10, sls), choices))
+        models = list(map(lambda sls: run_rand_models(random_size, sls, dataset_name, dataset, res_dir), choices))
     else:
-        models = list(map(run_model, choices))
+        models = list(starmap(run_model, choices, *args))
     pickle.dump(models, open(f'{res_dir}models.pickle', 'wb'))
 
     best = max(models, key=lambda x: x['ll'])
@@ -279,12 +301,12 @@ def run_dataset(dataset_name):
 # run_dataset('alban')
 # for dataset_name in datasets:
 #     run_dataset(dataset_name)
-# pool = multiprocessing.Pool(10)
+# pool = multiprocessing.Pool(num_workers)
 if __name__ == '__main__':
     if run_all:
         multiprocessing.set_start_method('spawn')
         if not inner_parallel:
-            with multiprocessing.Pool(10) as pool:
+            with multiprocessing.Pool(num_workers) as pool:
                 res = list(pool.map(run_dataset, datasets))
         else:
             res = list(map(run_dataset, datasets))
