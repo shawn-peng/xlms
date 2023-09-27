@@ -379,12 +379,13 @@ class MixtureModel(MixtureModelBase):
             for i in range(len(self.comps)):
                 for j, (cname, _) in enumerate(self.comps[i].items()):
                     mu_offset = np.random.uniform(0, 1)
-                    print(f'{cname} mu_offset {mu_offset}')
-                    sigma_scale = np.random.random()
+                    # print(f'{cname} mu_offset {mu_offset}')
+                    sigma_scale = np.random.uniform(0.5, 1)
+                    alpha_scale = np.random.uniform(0, 2)
                     mu -= j * mu_offset * sigma
                     self.weights[i][cname] = np.float32(1 / len(self.comps[i]))
                     self.comps[i][cname].mu = np.float32(mu)
-                    self.comps[i][cname].sigma = np.float32(sigma)
+                    self.comps[i][cname].sigma = np.float32(sigma_scale * sigma)
                     self.comps[i][cname].calc_alt_params()
             self.weights[1]['C'] *= np.float32(0.05)
         # elif self.init_strategy == 'one_sample':
