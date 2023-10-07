@@ -3,8 +3,8 @@ import multiprocessing as mp
 import matplotlib
 
 # matplotlib.use('TkAgg', force=True)
-matplotlib.use('Qt5Agg')
-print("Switched to:", matplotlib.get_backend())
+# matplotlib.use('Qt5Agg')
+# print("Switched to:", matplotlib.get_backend())
 
 
 

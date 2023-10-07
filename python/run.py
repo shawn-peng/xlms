@@ -1,6 +1,9 @@
 import multiprocessing
 import traceback
 
+import os
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
@@ -52,10 +55,12 @@ ic2_comp = True
 # init_strategy = None
 init_strategy = 'random'
 random_size = 20
+# parallel = True
+parallel = False
 inner_parallel = True
 # inner_parallel = False
 num_workers = 20
-if init_strategy == 'random' and inner_parallel:
+if init_strategy == 'random' and parallel and inner_parallel:
     show_plotting = False
 
 # alpha_base = 0. if gaussian_model else 2.
@@ -160,12 +165,12 @@ def capture_args(locals):
     return [locals[k] for k in ['dataset_name', 'dataset', 'res_dir']]
 
 
-def run_model(sls, dataset_name, dataset, res_dir):
+def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
     title = f"{dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
     if model_samples == 1:
         model = MixtureModel1S(sls, **settings[config], title=title)
     elif model_samples == 2:
-        model = MixtureModel(sls, **settings[config], title=title)
+        model = MixtureModel(sls, **settings[config], title=title, seedoff=modelid)
     # comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
     comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
     # comps = {'C': Norm(), 'IC': Norm(), 'I': Norm()}
@@ -200,11 +205,11 @@ def run_model(sls, dataset_name, dataset, res_dir):
 
 
 def run_rand_models(n, sls, dataset_name, dataset, res_dir):
-    if inner_parallel:
+    if parallel and inner_parallel:
         with multiprocessing.Pool(num_workers) as pool:
-            models = pool.starmap(run_model, ([(sls, dataset_name, dataset, res_dir)] * n))
+            models = pool.starmap(run_model, [(sls, dataset_name, dataset, res_dir, i) for i in range(n)])
     else:
-        models = list(starmap(run_model, ([(sls, dataset_name, dataset, res_dir)] * n)))
+        models = list(starmap(run_model, [(sls, dataset_name, dataset, res_dir, i) for i in range(n)]))
     models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
     rand_dir = f"{res_dir}/random_{'_'.join(map(str, sls.values()))}/"
     if not os.path.exists(rand_dir):
@@ -262,7 +267,7 @@ def run_dataset(dataset_name):
 
     # choices = [{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base}]
     choices = sum([[
-        {'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
+        #{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
         {'C': alpha_base, 'IC': alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
         {'C': alpha_base, 'IC': -alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
     ] for alpha_base in alpha_bases], [])
@@ -305,7 +310,7 @@ def run_dataset(dataset_name):
 if __name__ == '__main__':
     if run_all:
         multiprocessing.set_start_method('spawn')
-        if not inner_parallel:
+        if parallel and not inner_parallel:
             with multiprocessing.Pool(num_workers) as pool:
                 res = list(pool.map(run_dataset, datasets))
         else:

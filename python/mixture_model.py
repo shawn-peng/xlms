@@ -47,6 +47,7 @@ class MixtureModel(MixtureModelBase):
                  # title=None,
                  event_notify_func=None,
                  init_strategy=None,
+                 seedoff=0,
                  **kwargs):
         """
 
@@ -69,6 +70,7 @@ class MixtureModel(MixtureModelBase):
         self.initialized = initialized
         self.event_notify_func = event_notify_func
         self.ic2_comp = ic2_comp
+        self.seedoff = seedoff
         if ic2_comp:
             self.join_comps = [
                 ['C', 'C', 'IC', 'IC', 'IC', 'I1', 'I1', 'I1'],
@@ -185,6 +187,9 @@ class MixtureModel(MixtureModelBase):
             eqs[t[0]] += self.syms[f'eta{2}{cname}']
         for cname in self.comps[1]:
             eqs[ind[(1, cname)]] -= self.syms[f'eta{2}{cname}']
+        # for i in range(self.n_samples):
+        #     for cname in self.comps[i].keys():
+        #         eqs[ind[(i, cname)]] *= self.syms[f'w{i + 1}{cname}']
 
         # ind1 = {}
         # for cname in self.comps[0].keys():
@@ -283,76 +288,191 @@ class MixtureModel(MixtureModelBase):
                 vals[self.syms[f'R{i + 1}{cname}']] = sumRs[i][j]
 
         flag = False
-        active_cons = []
+        violated_cons = []
         for j, cname in enumerate(self.comps[1].keys()):
             # if self.weight_cons[j].subs(ws) <= 0:
             if self.weight_cons[f'2{cname}'].subs(ws) <= 0:
+                # constraint is satified, set it to inactive
+                pass
                 # sys_eqs.append(sympy.Eq(self.syms[f'eta{2}{cname}'], 0))
                 # sys_eqs.append(self.syms[f'eta{2}{cname}'])
-                vals[self.syms[f'eta{2}{cname}']] = 0
+                # vals[self.syms[f'eta{2}{cname}']] = 0
             else:
                 flag = True
-                active_cons.append(cname)
-                # active_cons += 1
+                violated_cons.append(cname)
+                # violated_cons += 1
                 # sys_eqs.append(self.weight_cons[j])
                 # sys_eqs.append(self.weight_cons[f'2{cname}'])
+
         if not flag:
             return res
-        if len(active_cons) > 1:
-            print(f'got {active_cons} active constraints, might unable to find solution')
-            return res
+
+        if len(violated_cons) > 1:
+            pass
+            # print(f'got {violated_cons} active constraints, might unable to find solution')
+            # issue solved
+            # return res
+
+        # usually we get two at most, if we have two violated cons
+        # try two cons separately, check wether all cons are satisfied
+
+        def choose_n(l, n):
+            if n == 0:
+                yield ()
+                return
+            if n > len(l):
+                return
+            x = l[0]
+            for r in choose_n(l[1:], n-1):
+                yield (x, ) + r
+            yield from choose_n(l[1:], n)
+
+        def gen_sys_eq(active_cnames):
+            # print(active_cnames)
+            newsys, newvals = deepcopy(sys_eqs), deepcopy(vals)
+            #for cname in violated_cons:
+            for cname in self.comps[1].keys():
+                if cname in active_cnames:
+                    newsys.append(self.weight_cons[f'2{cname}'])
+                else:
+                    # newvals[self.syms[f'eta{2}{cname}']] = 0
+                    newsys.append(self.syms[f'eta{2}{cname}'])
+            return newsys, newvals, active_cnames
 
         def all_sys_eqs():
-            for i in range(len(active_cons)):
-                newsys, newvals = deepcopy(sys_eqs), deepcopy(vals)
-                for j in range(len(active_cons)):
-                    cname = active_cons[j]
-                    if i == j:
-                        newsys.append(self.weight_cons[f'2{cname}'])
-                    else:
-                        newvals[self.syms[f'eta{2}{cname}']] = 0
-                yield newsys, newvals
+            for i in range(len(violated_cons)):
+                for selected_cnames in choose_n(violated_cons, i + 1):
+                    yield gen_sys_eq(selected_cnames)
 
-        def solve(sys_eqs, vals):
+        def get_var_syms_n_guess():
+            syms = []
+            guess = []
+            for i in range(self.n_samples):
+                for cname in self.comps[i].keys():
+                    syms.append(self.syms[f'w{i + 1}{cname}'])
+                    guess.append(res[i][cname])
+
+            for i in range(self.n_samples):
+                syms.append(self.syms[f'lambda{i + 1}'])
+                guess.append(n)
+
+            for cname in self.comps[1].keys():
+                syms.append(self.syms[f'eta2{cname}'])
+                guess.append(0)
+            return syms, guess
+
+        def find_neg_w(solution):
+            for i in range(self.n_samples):
+                for cname in self.comps[i].keys():
+                    sym = self.syms[f'w{i + 1}{cname}']
+                    if solution[sym] < 0:
+                        return sym
+                    
+        def solve_2IC2_2I1(sys_eqs, vals):
+            w2 = self.syms['w2I1']
+            eta2 = self.syms['eta2I1']
+            lambda2 = self.syms['lambda2']
+            R1C  = self.syms['R1C']
+            R1IC = self.syms['R1IC']
+            R1I1 = self.syms['R1I1']
+            R2C   = self.syms['R2C']
+            R2IC  = self.syms['R2IC']
+            R2I1  = self.syms['R2I1']
+            R2IC2 = self.syms['R2IC2']
+            R2I2  = self.syms['R2I2']
+            a = R1C + R1IC + R2I1
+            partial_sys_eqs = [
+                w2 ** 2 - w2 + R2I1 / n,
+                eta2 - (w2 * (n - a) - R2I1) / (w2 * (1 - w2)),
+                lambda2 + n - w2 * eta2 - 2 * w2 * n + a,
+            ]# + sys_eqs
+            sym_vars, _ = get_var_syms_n_guess()
+            solutions = sympy.solve(partial_sys_eqs, [w2, eta2, lambda2])
+            new_sys = list(unify_vec(sys_eqs, [w2, eta2, lambda2], solutions))
+            pass
+        
+        def unify(sys_eqs, solutions):
+            for solution in solutions:
+                sym_vars = list(solution.keys())
+                vals = list(solution.values())
+                yield sympy.substitution(sys_eqs, sym_vars, vals)
+        
+        def unify_vec(sys_eqs, syms, solutions):
+            for solution in solutions:
+                yield sympy.substitution(sys_eqs, syms, solution)
+                
+
+        def solve(sys_eqs, vals, active_cons):
+            if active_cons == ('IC2', 'I1'):
+                return solve_2IC2_2I1(sys_eqs, vals)
+            # use_nsolve = False
+            use_nsolve = True
+            # if nactive > 1:
+            #     use_nsolve = True
             sys_eqs += self.Lag_sys_eqs
             sys_eqs = list(map(lambda x: x.subs(vals), sys_eqs))
-            solutions = sympy.solve(sys_eqs)
+            # sys_eqs = [x for x in sys_eqs if x != 0]
+            try:
+                if use_nsolve:
+                    syms, guess = get_var_syms_n_guess()
+                    solutions = sympy.nsolve(sys_eqs, syms, guess)
+                    solutions = [dict(zip(syms, solutions[:, j]))
+                            for j in range(solutions.shape[1])]
+                    # print(solutions)
+                else:
+                    # print(sys_eqs)
+                    solutions = sympy.solve(sys_eqs)
+            except Exception as e:
+                return
+            
             solutions = [s for s in solutions if all(map(lambda x: x.subs(s), self.pos_ws))]
             if len(solutions) < 1:
                 return
             solution = solutions[0]
             return solution
 
+        def extract_res(solution):
+            for i in range(self.n_samples):
+                for j, cname in enumerate(self.comps[i].keys()):
+                    # self.weights[i][cname] = float(solution[self.syms[f'w{i + 1}{cname}']])
+                    w = float(solution[self.syms[f'w{i + 1}{cname}']].evalf(chop=True))
+                    res[i][cname] = w
+                    ws[self.syms[f'w{i + 1}{cname}']] = w
+
+        def check_cons(ws):
+            for j, cname in enumerate(self.comps[1].keys()):
+                r = float(self.weight_cons[f'2{cname}'].subs(ws))
+                # assert r < 0 or np.isclose(r, 0)
+                # print(r)
+                if not (r < 0 or np.isclose(r, 0)):
+                    return False
+            return True
+
         flag = False
+        # solutions = []
+
+        # Start from one cons, check if any solution for one cons satifies all cons
+        # if not, try two cons, three cons, etc.
         for solution in starmap(solve, all_sys_eqs()):
             if not solution:
                 continue
+
+            extract_res(solution)
+            if not check_cons(ws):
+                continue
+
             flag = True
             break
+            # solutions.append(solution)
 
         # assert flag
         if not flag:
             return res
-
+            assert False
 
         # if len(solutions) != 1:
         #     print(f'failed to solve weights, got {len(solutions)} solutions, return unconstrained weights')
         #     return res
-
-        # print(solution)
-        for i in range(self.n_samples):
-            for j, cname in enumerate(self.comps[i].keys()):
-                # self.weights[i][cname] = float(solution[self.syms[f'w{i + 1}{cname}']])
-                res[i][cname] = float(solution[self.syms[f'w{i + 1}{cname}']].evalf(chop=True))
-                ws[self.syms[f'w{i + 1}{cname}']] = float(solution[self.syms[f'w{i + 1}{cname}']].evalf(chop=True))
-
-        # print(self.weights)
-        for j, cname in enumerate(self.comps[1].keys()):
-            r = float(self.weight_cons[f'2{cname}'].subs(ws))
-            assert r < 0 or np.isclose(r, 0)
-
-        if len(active_cons) > 1:
-            print('Issue solved')
 
         return res
 
@@ -367,26 +487,47 @@ class MixtureModel(MixtureModelBase):
             np.histogram(X[:, 0], bins, density=True),
             np.histogram(X[:, 1], bins, density=True),
         ]
+    
+    def check_constraints(self):
+        for c, dist in self.all_comps.items():
+            if not self.comp_constraints[c](dist):
+                return False
+        return True
+
+    def log(self, *args):
+        print(f'{self.title} id {self.seedoff}:', *args)
 
     def init_model(self, X):
+        self.log('start init ...')
         self.init_range(X)
+
+        self.create_constraints()
 
         sigma = np.sqrt(X[:, 0].var())
         xmax = X.max()
         mu = xmax
         if self.init_strategy == 'random':
-            np.random.seed(int(time.time()))
-            for i in range(len(self.comps)):
-                for j, (cname, _) in enumerate(self.comps[i].items()):
-                    mu_offset = np.random.uniform(0, 1)
-                    # print(f'{cname} mu_offset {mu_offset}')
-                    sigma_scale = np.random.uniform(0.5, 1)
-                    alpha_scale = np.random.uniform(0, 2)
-                    mu -= j * mu_offset * sigma
-                    self.weights[i][cname] = np.float32(1 / len(self.comps[i]))
-                    self.comps[i][cname].mu = np.float32(mu)
-                    self.comps[i][cname].sigma = np.float32(sigma_scale * sigma)
-                    self.comps[i][cname].calc_alt_params()
+            # seed = int(time.time()) + self.seedoff
+            seed = self.seedoff
+            # seed = 4
+            print(f'seed {seed}')
+            np.random.seed(seed)
+            while True:
+                for i in range(len(self.comps)):
+                    for j, (cname, _) in enumerate(self.comps[i].items()):
+                        mu_offset = np.random.uniform(0, 1)
+                        # print(f'{cname} mu_offset {mu_offset}')
+                        sigma_scale = np.random.uniform(0.5, 1)
+                        alpha_scale = np.random.uniform(0, 2)
+                        mu -= j * mu_offset * sigma
+                        self.weights[i][cname] = np.float32(1 / len(self.comps[i]))
+                        self.comps[i][cname].mu = np.float32(mu)
+                        # self.comps[i][cname].sigma = np.float32(sigma_scale * sigma)
+                        self.comps[i][cname].sigma = np.float32(sigma)
+                        self.comps[i][cname].calc_alt_params()
+                if self.check_constraints():
+                    break
+                print('resample params')
             self.weights[1]['C'] *= np.float32(0.05)
         # elif self.init_strategy == 'one_sample':
         #     model1s = MixtureModel1S(self.skew_dirs, self.constraints, self.tolerance, self.binwidth, self.plotstep,
@@ -406,8 +547,6 @@ class MixtureModel(MixtureModelBase):
         self.lls = [self.ll]
         self.slls = self.sep_log_likelihood(X)
 
-        self.create_constraints()
-
         self.starting_pos = self.frozen()
         self.initialized = True
 
@@ -415,6 +554,7 @@ class MixtureModel(MixtureModelBase):
             self.plot(X, self.lls, self.slls)
         if self.event_notify_func:
             self.event_notify_func('update', self.starting_pos)
+        self.log('init finished ...')
 
     def create_constraints(self):
         x = self.xrange
@@ -583,7 +723,7 @@ class MixtureModel(MixtureModelBase):
             self.ll = self.log_likelihood(X)
             # assert ll >= self.lls[-1]
             if self.ll < self.lls[-1]:
-                print('ll decreased', f'{self.lls[-1]} -> {self.ll}')
+                self.log('ll decreased', f'{self.lls[-1]} -> {self.ll}')
             self.lls.append(self.ll)
             self.slls = self.sep_log_likelihood(X)
 
@@ -602,14 +742,17 @@ class MixtureModel(MixtureModelBase):
             # print(self.show_plotting, self.plot_interval, cur_t - prev_t)
             if self.event_notify_func:
                 self.event_notify_func('update', self.frozen())
-            if self.show_plotting and cur_t - prev_t >= self.plot_interval:
-                # thread = threading.Thread(target=lambda : self.plot(X, self.lls, self.slls))
-                # thread = threading.Thread(target=update_fig)
-                # thread.start()
-                print('plotting...')
-                self.plot(X, self.lls, self.slls)
-                print('|', meter.read())
-                print('plot finished')
+            # print(cur_t)
+            if cur_t - prev_t >= self.plot_interval:
+                self.log(f'id {self.seedoff}: {len(self.lls)} iterations')
+                if self.show_plotting:
+                    # thread = threading.Thread(target=lambda : self.plot(X, self.lls, self.slls))
+                    # thread = threading.Thread(target=update_fig)
+                    # thread.start()
+                    print('plotting...')
+                    self.plot(X, self.lls, self.slls)
+                    print('|', meter.read())
+                    print('plot finished')
 
                 prev_t = time.time()
 
