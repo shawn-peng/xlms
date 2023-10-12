@@ -403,21 +403,24 @@ class MixtureModel(MixtureModelBase):
                 
 
         def solve(sys_eqs, vals, active_cons):
-            if active_cons == ('IC2', 'I1'):
-                return solve_2IC2_2I1(sys_eqs, vals)
-            # use_nsolve = False
-            use_nsolve = True
-            # if nactive > 1:
-            #     use_nsolve = True
+            # if active_cons == ('IC2', 'I1'):
+            #     return solve_2IC2_2I1(sys_eqs, vals)
+            nactive = len(active_cons)
+            use_nsolve = False
+            # use_nsolve = True
+            if nactive > 1:
+                use_nsolve = True
             sys_eqs += self.Lag_sys_eqs
             sys_eqs = list(map(lambda x: x.subs(vals), sys_eqs))
             # sys_eqs = [x for x in sys_eqs if x != 0]
             try:
                 if use_nsolve:
                     syms, guess = get_var_syms_n_guess()
-                    solutions = sympy.nsolve(sys_eqs, syms, guess)
-                    solutions = [dict(zip(syms, solutions[:, j]))
-                            for j in range(solutions.shape[1])]
+                    # solutions = sympy.nsolve(sys_eqs, syms, guess)
+                    # solutions = [dict(zip(syms, solutions[:, j]))
+                    #              for j in range(solutions.shape[1])]
+                    solutions = sympy.nonlinsolve(sys_eqs, *syms)
+                    solutions = [dict(zip(syms, s)) for s in solutions]
                     # print(solutions)
                 else:
                     # print(sys_eqs)
