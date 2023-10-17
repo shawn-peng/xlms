@@ -55,10 +55,10 @@ ic2_comp = True
 # init_strategy = None
 init_strategy = 'random'
 random_size = 20
-# parallel = True
-parallel = False
-inner_parallel = True
-# inner_parallel = False
+parallel = True
+# parallel = False
+# inner_parallel = True
+inner_parallel = False
 num_workers = 20
 if init_strategy == 'random' and parallel and inner_parallel:
     show_plotting = False
@@ -124,6 +124,8 @@ config = 'unweighted_pdf_mode'
 if len(sys.argv) > 1:
     config = sys.argv[1]
 
+dir_suffix = '_2'
+
 map_cons_str = {
     'weights':      'w',
     'mode':         'mode',
@@ -166,7 +168,7 @@ def capture_args(locals):
 
 
 def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
-    title = f"{dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
+    title = f"({len(dataset) / 1000:.2f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
     if model_samples == 1:
         model = MixtureModel1S(sls, **settings[config], title=title)
     elif model_samples == 2:
@@ -193,7 +195,7 @@ def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
     # plt.subplot(3, 1, 1)
     ax = plt.gcf().axes[0]
     plt.axes(ax)
-    plt.title(f"{dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
+    plt.title(f"({len(dataset) / 1000:.2f}k) {dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
     plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
     return {
         'll':    ll,
