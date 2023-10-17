@@ -168,7 +168,7 @@ def capture_args(locals):
 
 
 def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
-    title = f"({len(dataset) / 1000:.2f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
+    title = f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
     if model_samples == 1:
         model = MixtureModel1S(sls, **settings[config], title=title)
     elif model_samples == 2:
@@ -195,7 +195,7 @@ def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
     # plt.subplot(3, 1, 1)
     ax = plt.gcf().axes[0]
     plt.axes(ax)
-    plt.title(f"({len(dataset) / 1000:.2f}k) {dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
+    plt.title(f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
     plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
     return {
         'll':    ll,
@@ -224,7 +224,7 @@ def run_rand_models(n, sls, dataset_name, dataset, res_dir):
         ax = plt.gcf().axes[0]
         plt.axes(ax)
         plt.title(
-            f"{dataset_name} {model['sls']} ll={model['ll']:.05f}"
+            f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} ll={model['ll']:.05f}"
             f" constraints={get_cons_str(settings[config]['constraints'])}")
         plt.savefig(f'{rand_dir}/{fname}')
     return models[0]
