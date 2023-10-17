@@ -1,3 +1,4 @@
+import json
 import multiprocessing
 import traceback
 
@@ -43,9 +44,10 @@ datasets = [
 ]
 
 SAMPLE_SIZE = 20000
-tolerance = 1e-8
-show_plotting = True
-# show_plotting = False
+tolerance = 1e-4
+max_iteration = 5000
+# show_plotting = True
+show_plotting = False
 plot_interval = 5
 # gaussian_model = True
 gaussian_model = False
@@ -54,11 +56,11 @@ ic2_comp = True
 # ic2_comp = False
 # init_strategy = None
 init_strategy = 'random'
-random_size = 20
-parallel = True
-# parallel = False
-# inner_parallel = True
-inner_parallel = False
+random_size = 1
+# parallel = True
+parallel = False
+inner_parallel = True
+# inner_parallel = False
 num_workers = 20
 if init_strategy == 'random' and parallel and inner_parallel:
     show_plotting = False
@@ -66,10 +68,12 @@ if init_strategy == 'random' and parallel and inner_parallel:
 # alpha_base = 0. if gaussian_model else 2.
 alpha_bases = [0.] if gaussian_model else [1., 2., 5.]
 
-run_all = True
-# run_all = False
-dataset_to_run = 'ecoli_xl'
+# run_all = True
+run_all = False
+# dataset_to_run = 'ecoli_xl'
+# dataset_to_run = 'alban'
 # dataset_to_run = 'Alinden'
+dataset_to_run = 'D1810'
 # dataset_to_run = 'MS2000225'
 if run_all:
     show_plotting = False
@@ -81,6 +85,7 @@ basic_settings = {'ic2_comp':      ic2_comp,
                   'show_plotting': show_plotting,
                   'plot_interval': plot_interval,
                   'init_strategy': init_strategy,
+                  'max_iteration': max_iteration,
                   }
 
 settings = {
@@ -167,7 +172,7 @@ def capture_args(locals):
     return [locals[k] for k in ['dataset_name', 'dataset', 'res_dir']]
 
 
-def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
+def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     title = f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
     if model_samples == 1:
         model = MixtureModel1S(sls, **settings[config], title=title)
@@ -195,6 +200,9 @@ def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
     # plt.subplot(3, 1, 1)
     ax = plt.gcf().axes[0]
     plt.axes(ax)
+    tda_fdr1 = tda_info['fdr_thres']
+    plt.axvline(tda_fdr1, linestyle='--')
+    plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
     plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
     return {
@@ -206,12 +214,12 @@ def run_model(sls, dataset_name, dataset, res_dir, modelid=0):
     }
 
 
-def run_rand_models(n, sls, dataset_name, dataset, res_dir):
+def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
     if parallel and inner_parallel:
         with multiprocessing.Pool(num_workers) as pool:
-            models = pool.starmap(run_model, [(sls, dataset_name, dataset, res_dir, i) for i in range(n)])
+            models = pool.starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)])
     else:
-        models = list(starmap(run_model, [(sls, dataset_name, dataset, res_dir, i) for i in range(n)]))
+        models = list(starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)]))
     models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
     rand_dir = f"{res_dir}/random_{'_'.join(map(str, sls.values()))}/"
     if not os.path.exists(rand_dir):
@@ -223,6 +231,9 @@ def run_rand_models(n, sls, dataset_name, dataset, res_dir):
         MixtureModelBase._plot(dataset.mat.T, model['lls'], model['slls'], model['model'], fig)
         ax = plt.gcf().axes[0]
         plt.axes(ax)
+        tda_fdr1 = tda_info['fdr_thres']
+        plt.axvline(tda_fdr1, linestyle='--')
+        plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
         plt.title(
             f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} ll={model['ll']:.05f}"
             f" constraints={get_cons_str(settings[config]['constraints'])}")
@@ -243,7 +254,7 @@ def enum_signs(comps):
 
 def run_dataset(dataset_name):
     global base_figure_dir
-    base_figure_dir = f'figures_python_diffsign_{model_class}_{config}' \
+    base_figure_dir = f'figures_python_diffsign_{model_class}_{config}{dir_suffix}' \
                       f'_initskew_{"_".join([f"{alpha_base:.0f}" for alpha_base in alpha_bases])}'
 
     # res_dir = f'../figures_python_1S_{config}/{dataset_name}/'
@@ -251,6 +262,7 @@ def run_dataset(dataset_name):
     # res_dir = f'../figures_python_order_stats_skewnorm_IC_I/{dataset_name}/'
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
+    tda_info = json.load(open(f'../results/info/{dataset_name}.json'))
     dataset = XLMS_Dataset(dataset_name)
     dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
 
@@ -281,7 +293,7 @@ def run_dataset(dataset_name):
 
     # models = pickle.load(open(f'{res_dir}models.pickle', 'rb'))
     if init_strategy == 'random':
-        models = list(map(lambda sls: run_rand_models(random_size, sls, dataset_name, dataset, res_dir), choices))
+        models = list(map(lambda sls: run_rand_models(random_size, sls, dataset_name, dataset, tda_info, res_dir), choices))
     else:
         models = list(starmap(run_model, choices, *args))
     pickle.dump(models, open(f'{res_dir}models.pickle', 'wb'))
@@ -293,12 +305,15 @@ def run_dataset(dataset_name):
     if best['ll'] == -np.inf:
         print('no solution for', dataset_name)
         return
+    tda_fdr1 = tda_info['fdr_thres']
     # best['model'].plot(dataset.mat.T, best['lls'], best['model'].sep_log_likelihood(dataset.mat.T))
     fig = plt.figure(figsize=(16, 9))
     MixtureModelBase._plot(dataset.mat.T, best['lls'], best['slls'], best['model'], fig)
     # plt.subplot(3, 1, 1)
     ax = plt.gcf().axes[0]
     plt.axes(ax)
+    plt.axvline(tda_fdr1, linestyle='--')
+    plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
         f"{dataset_name} {best['sls']} ll={best['ll']:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}")

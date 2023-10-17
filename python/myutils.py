@@ -19,6 +19,18 @@ def truncate_zero(m):
     m[flags] = m[~flags].min()
 
 
+def choose_n(l, n):
+    if n == 0:
+        yield ()
+        return
+    if n > len(l):
+        return
+    x = l[0]
+    for r in choose_n(l[1:], n - 1):
+        yield (x,) + r
+    yield from choose_n(l[1:], n)
+
+
 class NamedArray(object):
     def __init__(self, fields, val=0):
         self.idx = {f: i for i, f in enumerate(fields)}

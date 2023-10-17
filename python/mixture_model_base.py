@@ -52,7 +52,7 @@ class MixtureModelBase:
         return AttrObj({
             **{
                 k: deepcopy(self.__getattribute__(k))
-                for k in ['binwidth', 'plotstep', 'n_samples', 'weights', 'comps', 'all_comps', 'starting_pos', 'title']
+                for k in ['binwidth', 'plotstep', 'n_samples', 'weights', 'comps', 'all_comps', 'starting_pos', 'fdr_thres', 'title']
             }})
 
     def __del__(self):
@@ -154,6 +154,9 @@ class MixtureModelBase:
             ax.text(0, lls[-1] - 0.1, f'll = {lls[-1]:.5f}')
         ax = fig.axes[0]
         # plt.axes(ax)
+        fdr1 = frozen_model.fdr_thres
+        ax.axvline(fdr1)
+        ax.text(fdr1, 0.005, '$\leftarrow$ 1% FDR threshold')
         if frozen_model.title:
             ax.set_title(frozen_model.title)
         plt.pause(0.01)

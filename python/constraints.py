@@ -42,12 +42,12 @@ class RelativeConstraint:
                 return False
 
         if self.pdf:
+            wr, wl = self.weights
             mode_right = self.right_dist.mode
             x_pdf = self.x_range[self.x_range > mode_right]
             pr = self.right_dist.pdf(x_pdf)
             pl = self.left_dist.pdf(x_pdf)
             # for wr, wl in self.weights:
-            wr, wl = self.weights
             # print('weights shape', wr.shape, wl.shape)
             # if callable(wr):
             #     wr = wr()
@@ -55,6 +55,14 @@ class RelativeConstraint:
             #     wl = wl()
             # cond = wr * self.right_dist.pdf(x_pdf) >= wl * self.left_dist.pdf(x_pdf)
             cond = (wr * pr - wl * pl) >= -fuzzy
+            if not cond.all():
+                return False
+
+            mode_left = self.left_dist.mode
+            x_pdf_l = self.x_range[self.x_range < mode_left]
+            pr_l = self.right_dist.pdf(x_pdf_l)
+            pl_l = self.left_dist.pdf(x_pdf_l)
+            cond = (wr * pl_l - wl * pr_l) >= -fuzzy
             if not cond.all():
                 return False
 

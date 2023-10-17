@@ -39,6 +39,7 @@ class MixtureModel(MixtureModelBase):
                  ic2_comp=False,
                  constraints=('weights',),
                  tolerance=1e-8,
+                 max_iteration=10000,
                  binwidth=2.5,
                  plotstep=0.1,
                  show_plotting=False,
@@ -55,6 +56,7 @@ class MixtureModel(MixtureModelBase):
         :param ic2_comp: model IC2 component separately
         :param constraints: options [ weights, mode, pdf, cdf, weighted_pdf ]
         :param tolerance: convergence threshold
+        :param max_iteration: maximum iteration will go through
         :param binwidth: binwidth for histogram plotting
         :param plotstep: step for the grid when plotting curves (e.g. pdf, cdf)
         :param show_plotting: plot each step during running of the program
@@ -63,6 +65,7 @@ class MixtureModel(MixtureModelBase):
         super().__init__(**kwargs)
         self.skew_dirs = skew_dirs
         self.tolerance = tolerance
+        self.max_iteration = max_iteration
         self.binwidth = binwidth
         self.plotstep = plotstep
         self.show_plotting = show_plotting
@@ -323,14 +326,14 @@ class MixtureModel(MixtureModelBase):
             if n > len(l):
                 return
             x = l[0]
-            for r in choose_n(l[1:], n-1):
-                yield (x, ) + r
+            for r in choose_n(l[1:], n - 1):
+                yield (x,) + r
             yield from choose_n(l[1:], n)
 
         def gen_sys_eq(active_cnames):
             # print(active_cnames)
             newsys, newvals = deepcopy(sys_eqs), deepcopy(vals)
-            #for cname in violated_cons:
+            # for cname in violated_cons:
             for cname in self.comps[1].keys():
                 if cname in active_cnames:
                     newsys.append(self.weight_cons[f'2{cname}'])
@@ -367,40 +370,39 @@ class MixtureModel(MixtureModelBase):
                     sym = self.syms[f'w{i + 1}{cname}']
                     if solution[sym] < 0:
                         return sym
-                    
+
         def solve_2IC2_2I1(sys_eqs, vals):
             w2 = self.syms['w2I1']
             eta2 = self.syms['eta2I1']
             lambda2 = self.syms['lambda2']
-            R1C  = self.syms['R1C']
+            R1C = self.syms['R1C']
             R1IC = self.syms['R1IC']
             R1I1 = self.syms['R1I1']
-            R2C   = self.syms['R2C']
-            R2IC  = self.syms['R2IC']
-            R2I1  = self.syms['R2I1']
+            R2C = self.syms['R2C']
+            R2IC = self.syms['R2IC']
+            R2I1 = self.syms['R2I1']
             R2IC2 = self.syms['R2IC2']
-            R2I2  = self.syms['R2I2']
+            R2I2 = self.syms['R2I2']
             a = R1C + R1IC + R2I1
             partial_sys_eqs = [
                 w2 ** 2 - w2 + R2I1 / n,
                 eta2 - (w2 * (n - a) - R2I1) / (w2 * (1 - w2)),
                 lambda2 + n - w2 * eta2 - 2 * w2 * n + a,
-            ]# + sys_eqs
+            ]  # + sys_eqs
             sym_vars, _ = get_var_syms_n_guess()
             solutions = sympy.solve(partial_sys_eqs, [w2, eta2, lambda2])
             new_sys = list(unify_vec(sys_eqs, [w2, eta2, lambda2], solutions))
             pass
-        
+
         def unify(sys_eqs, solutions):
             for solution in solutions:
                 sym_vars = list(solution.keys())
                 vals = list(solution.values())
                 yield sympy.substitution(sys_eqs, sym_vars, vals)
-        
+
         def unify_vec(sys_eqs, syms, solutions):
             for solution in solutions:
                 yield sympy.substitution(sys_eqs, syms, solution)
-                
 
         def solve(sys_eqs, vals, active_cons):
             # if active_cons == ('IC2', 'I1'):
@@ -427,7 +429,7 @@ class MixtureModel(MixtureModelBase):
                     solutions = sympy.solve(sys_eqs)
             except Exception as e:
                 return
-            
+
             solutions = [s for s in solutions if all(map(lambda x: x.subs(s), self.pos_ws))]
             if len(solutions) < 1:
                 return
@@ -490,7 +492,7 @@ class MixtureModel(MixtureModelBase):
             np.histogram(X[:, 0], bins, density=True),
             np.histogram(X[:, 1], bins, density=True),
         ]
-    
+
     def check_constraints(self):
         for c, dist in self.all_comps.items():
             if not self.comp_constraints[c](dist):
@@ -511,7 +513,7 @@ class MixtureModel(MixtureModelBase):
         mu = xmax
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
-            seed = self.seedoff
+            seed = self.seedoff + 3
             # seed = 4
             print(f'seed {seed}')
             np.random.seed(seed)
@@ -640,13 +642,25 @@ class MixtureModel(MixtureModelBase):
         if self.ic2_comp:
             comp_constraints['I2'] = relative_constraints['I1_I2'].getDistChecker('left')
 
-    def check_constraints(self):
-        for c, dist in self.all_comps.items():
-            comp = f'{c}'
-            cons = self.comp_constraints[comp]
-            if not cons(dist):
-                return False
-        return True
+    @property
+    def fdr_thres(self):
+        return self.fdr_thres_score(self.xrange, 0.01)
+
+    def fdr_thres_score(self, x, fdr_thres):
+        fdr = self.fdr(x)
+        cond = fdr <= fdr_thres
+        inds = np.argwhere(cond)
+        if not len(inds):
+            return np.inf
+        return x[inds[0]][0]
+
+    def fdr(self, x):
+        tp = self.weights[0]['C'] * (1 - self.all_comps['C'].cdf(x))
+        fpic = self.weights[0]['IC'] * (1 - self.all_comps['IC'].cdf(x))
+        fpi1 = self.weights[0]['I1'] * (1 - self.all_comps['I1'].cdf(x))
+        fp = fpic + fpi1
+        fdr = fp / (tp + fp)
+        return fdr
 
     def fit(self, X):
         prev_ll = -np.inf
@@ -677,7 +691,7 @@ class MixtureModel(MixtureModelBase):
             self.plot(X, self.lls, self.slls)
             pass
         prev_t = time.time()
-        while abs(self.ll - prev_ll) > self.tolerance and not self.stopped:
+        while abs(self.ll - prev_ll) > self.tolerance and not self.stopped and len(self.lls) <= self.max_iteration:
             # print(f'iteration {len(self.lls)}')
             prev_ll = self.ll
             rs = self.pred(X)
@@ -747,7 +761,7 @@ class MixtureModel(MixtureModelBase):
                 self.event_notify_func('update', self.frozen())
             # print(cur_t)
             if cur_t - prev_t >= self.plot_interval:
-                self.log(f'id {self.seedoff}: {len(self.lls)} iterations')
+                self.log(f'{len(self.lls)} iterations')
                 if self.show_plotting:
                     # thread = threading.Thread(target=lambda : self.plot(X, self.lls, self.slls))
                     # thread = threading.Thread(target=update_fig)
