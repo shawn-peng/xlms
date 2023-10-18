@@ -13,6 +13,7 @@ import sys
 import subprocess
 from functools import *
 from itertools import *
+import argparse
 
 from mixture_model_base import MixtureModelBase
 from mixture_model import MixtureModel
@@ -80,6 +81,53 @@ if run_all:
 
 common_settings_2s = {}
 
+# config = 'common'
+# config = 'no_constraint'
+# config = 'weight_constraints'
+# config = 'unweighted_pdf'
+# config = 'unweighted_cdf'
+# config = 'unweighted_pdf_cdf'
+# config = 'unweighted_pdf_no_weight_constraints'
+# config = 'unweighted_cdf_no_weight_constraints'
+# config = 'unweighted_pdf_cdf_no_weight_constraints'
+config = 'unweighted_pdf_mode'
+# config = 'unweighted_cdf_mode'
+# config = 'unweighted_pdf_cdf_mode'
+# config = 'unweighted_pdf_weighted_pdf_mode'
+# config = 'unweighted_cdf_weighted_pdf_mode'
+# config = 'unweighted_pdf_cdf_weighted_pdf_mode'
+# if len(sys.argv) > 1:
+#     config = sys.argv[1]
+
+dir_suffix = '_2'
+
+parser = argparse.ArgumentParser(prog='XLMS')
+parser.add_argument('-c', '--config', default=config)
+parser.add_argument('-d', '--dataset', default=dataset_to_run)
+parser.add_argument('-s', '--suffix', default=dir_suffix)
+parser.add_argument('-t', '--tolerance', default=tolerance)
+parser.add_argument('-a', '--all', action='store_true', default=run_all)
+parser.add_argument('-p', '--parallel', action='store_true', default=parallel)
+parser.add_argument('-i', '--inner_parallel', action='store_true', default=inner_parallel)
+
+args = parser.parse_args()
+
+config = args.config
+dataset_to_run = args.dataset_to_run
+dir_suffix = args.dir_suffix
+tolerance = args.tolerance
+run_all = args.run_all
+parallel = args.parallel
+inner_parallel = args.inner_parallel
+
+map_cons_str = {
+    'weights':      'w',
+    'mode':         'mode',
+    'pdf':          'pdf',
+    'cdf':          'cdf',
+    'weighted_pdf': 'wpdf',
+}
+
 basic_settings = {'ic2_comp':      ic2_comp,
                   'tolerance':     tolerance,
                   'show_plotting': show_plotting,
@@ -109,34 +157,6 @@ settings = {
                                                  'constraints': ['weights', 'mode', 'pdf', 'weighted_pdf']},
     'unweighted_cdf_weighted_pdf_mode':         {**basic_settings,
                                                  'constraints': ['weights', 'mode', 'cdf', 'weighted_pdf']},
-}
-
-# config = 'common'
-# config = 'no_constraint'
-# config = 'weight_constraints'
-# config = 'unweighted_pdf'
-# config = 'unweighted_cdf'
-# config = 'unweighted_pdf_cdf'
-# config = 'unweighted_pdf_no_weight_constraints'
-# config = 'unweighted_cdf_no_weight_constraints'
-# config = 'unweighted_pdf_cdf_no_weight_constraints'
-config = 'unweighted_pdf_mode'
-# config = 'unweighted_cdf_mode'
-# config = 'unweighted_pdf_cdf_mode'
-# config = 'unweighted_pdf_weighted_pdf_mode'
-# config = 'unweighted_cdf_weighted_pdf_mode'
-# config = 'unweighted_pdf_cdf_weighted_pdf_mode'
-if len(sys.argv) > 1:
-    config = sys.argv[1]
-
-dir_suffix = '_2'
-
-map_cons_str = {
-    'weights':      'w',
-    'mode':         'mode',
-    'pdf':          'pdf',
-    'cdf':          'cdf',
-    'weighted_pdf': 'wpdf',
 }
 
 
