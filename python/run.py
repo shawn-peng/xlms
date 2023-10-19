@@ -1,5 +1,6 @@
 import json
 import multiprocessing
+# multiprocessing.set_start_method('spawn')
 import traceback
 
 import os
@@ -44,8 +45,8 @@ datasets = [
     # 'Gordon',
 ]
 
-SAMPLE_SIZE = 20000
-tolerance = 1e-4
+SAMPLE_SIZE = 50000
+tolerance = 1e-8
 max_iteration = 5000
 # show_plotting = True
 show_plotting = False
@@ -57,20 +58,21 @@ ic2_comp = True
 # ic2_comp = False
 # init_strategy = None
 init_strategy = 'random'
-random_size = 1
-# parallel = True
-parallel = False
-inner_parallel = True
-# inner_parallel = False
+random_size = 20
+parallel = True
+# parallel = False
+# inner_parallel = True
+inner_parallel = False
 num_workers = 20
 if init_strategy == 'random' and parallel and inner_parallel:
     show_plotting = False
 
 # alpha_base = 0. if gaussian_model else 2.
 alpha_bases = [0.] if gaussian_model else [1., 2., 5.]
+# alpha_bases = [0.] if gaussian_model else [2.]
 
-# run_all = True
-run_all = False
+run_all = True
+# run_all = False
 # dataset_to_run = 'ecoli_xl'
 # dataset_to_run = 'alban'
 # dataset_to_run = 'Alinden'
@@ -99,26 +101,30 @@ config = 'unweighted_pdf_mode'
 # if len(sys.argv) > 1:
 #     config = sys.argv[1]
 
-dir_suffix = '_2'
+dir_suffix = '_3'
 
 parser = argparse.ArgumentParser(prog='XLMS')
 parser.add_argument('-c', '--config', default=config)
 parser.add_argument('-d', '--dataset', default=dataset_to_run)
 parser.add_argument('-s', '--suffix', default=dir_suffix)
-parser.add_argument('-t', '--tolerance', default=tolerance)
-parser.add_argument('-a', '--all', action='store_true', default=run_all)
-parser.add_argument('-p', '--parallel', action='store_true', default=parallel)
-parser.add_argument('-i', '--inner_parallel', action='store_true', default=inner_parallel)
+parser.add_argument('-j', '--jobs', type=int, default=num_workers)
+parser.add_argument('-t', '--tolerance', type=float, default=tolerance)
+parser.add_argument('-a', '--all', action='store_true', default=False)
+parser.add_argument('-p', '--parallel', action='store_true', default=False)
+parser.add_argument('-i', '--inner_parallel', action='store_true', default=False)
 
 args = parser.parse_args()
 
+print(args)
+
 config = args.config
-dataset_to_run = args.dataset_to_run
-dir_suffix = args.dir_suffix
+dataset_to_run = args.dataset
+dir_suffix = args.suffix
 tolerance = args.tolerance
-run_all = args.run_all
+run_all = args.all
 parallel = args.parallel
 inner_parallel = args.inner_parallel
+num_workers = args.jobs
 
 map_cons_str = {
     'weights':      'w',
@@ -194,6 +200,7 @@ def capture_args(locals):
 
 def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     title = f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
+    print('model:', modelid)
     if model_samples == 1:
         model = MixtureModel1S(sls, **settings[config], title=title)
     elif model_samples == 2:
@@ -205,8 +212,8 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     # ll, lls = model.fit(dataset.mat.T)
     # model = pickle.load(open('temp_model.pickle', 'rb'))
     # model.initialized = True
-    ll, lls = model.fit(dataset.mat.T)
     try:
+        ll, lls = model.fit(dataset.mat.T)
         pass
     except Exception as e:
         print(f'Exception {traceback.format_exc()} happened for {dataset_name}, stopped at middle')
@@ -223,7 +230,10 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     tda_fdr1 = tda_info['fdr_thres']
     plt.axvline(tda_fdr1, linestyle='--')
     plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
-    plt.title(f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f} constraints={get_cons_str(settings[config]['constraints'])}")
+    plt.title(
+            f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f}"
+            f" constraints={get_cons_str(settings[config]['constraints'])}"
+            f" {'Y' if model.cons_satisfied else 'N'}")
     plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
     return {
         'll':    ll,
@@ -231,12 +241,13 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
         'sls':   sls,
         'slls':  model.slls,
         'model': model.frozen(),
+        'cons_sat': model.cons_satisfied,
     }
 
 
 def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
     if parallel and inner_parallel:
-        with multiprocessing.Pool(num_workers) as pool:
+        with multiprocessing.get_context('spawn').Pool(num_workers) as pool:
             models = pool.starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)])
     else:
         models = list(starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)]))
@@ -256,7 +267,8 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
         plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
         plt.title(
             f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} ll={model['ll']:.05f}"
-            f" constraints={get_cons_str(settings[config]['constraints'])}")
+            f" constraints={get_cons_str(settings[config]['constraints'])}"
+            f" {'Y' if model['cons_sat'] else 'N'}")
         plt.savefig(f'{rand_dir}/{fname}')
     return models[0]
 
@@ -336,7 +348,8 @@ def run_dataset(dataset_name):
     plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
         f"{dataset_name} {best['sls']} ll={best['ll']:.05f}"
-        f" constraints={get_cons_str(settings[config]['constraints'])}")
+        f" constraints={get_cons_str(settings[config]['constraints'])}"
+        f" {'Y' if model['cons_sat'] else 'N'}")
     plt.savefig(f'{res_dir}/best.png')
 
 
@@ -346,9 +359,8 @@ def run_dataset(dataset_name):
 # pool = multiprocessing.Pool(num_workers)
 if __name__ == '__main__':
     if run_all:
-        multiprocessing.set_start_method('spawn')
         if parallel and not inner_parallel:
-            with multiprocessing.Pool(num_workers) as pool:
+            with multiprocessing.get_context('spawn').Pool(num_workers) as pool:
                 res = list(pool.map(run_dataset, datasets))
         else:
             res = list(map(run_dataset, datasets))

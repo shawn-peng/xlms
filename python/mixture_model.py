@@ -510,29 +510,38 @@ class MixtureModel(MixtureModelBase):
 
         sigma = np.sqrt(X[:, 0].var())
         xmax = X.max()
-        mu = xmax
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
-            seed = self.seedoff + 3
+            seed = self.seedoff
             # seed = 4
             print(f'seed {seed}')
             np.random.seed(seed)
+            frozen_model = self.frozen()
             while True:
+                mu = xmax
                 for i in range(len(self.comps)):
                     for j, (cname, _) in enumerate(self.comps[i].items()):
-                        mu_offset = np.random.uniform(0, 1)
-                        # print(f'{cname} mu_offset {mu_offset}')
-                        sigma_scale = np.random.uniform(0.5, 1)
-                        alpha_scale = np.random.uniform(0, 2)
-                        mu -= j * mu_offset * sigma
                         self.weights[i][cname] = np.float32(1 / len(self.comps[i]))
-                        self.comps[i][cname].mu = np.float32(mu)
-                        # self.comps[i][cname].sigma = np.float32(sigma_scale * sigma)
-                        self.comps[i][cname].sigma = np.float32(sigma)
-                        self.comps[i][cname].calc_alt_params()
+                for cname, cdist in self.all_comps.items():
+                    mu_offset = np.random.uniform(0, 1)
+                    # print(f'{cname} mu_offset {mu_offset}')
+                    # sigma_scale = np.random.uniform(0.5, 1.0)
+                    sigma_scale = 1.0
+                    # alpha_scale = np.random.uniform(0.0, 2.0)
+                    alpha_scale = 1.0
+                    mu -= 3 * mu_offset * sigma
+                    cdist.mu = np.float32(mu)
+                    cdist.sigma = np.float32(sigma)
+                    cdist.sigma *= np.float32(sigma_scale)
+                    cdist.alpha = frozen_model.all_comps[cname].alpha * np.float32(alpha_scale)
+                    cdist.calc_alt_params()
+                # self.log(self.comps)
                 if self.check_constraints():
                     break
-                print('resample params')
+                else:
+                    break
+                self.log('resample params')
+            self.log(self.comps)
             self.weights[1]['C'] *= np.float32(0.05)
         # elif self.init_strategy == 'one_sample':
         #     model1s = MixtureModel1S(self.skew_dirs, self.constraints, self.tolerance, self.binwidth, self.plotstep,
@@ -645,6 +654,10 @@ class MixtureModel(MixtureModelBase):
     @property
     def fdr_thres(self):
         return self.fdr_thres_score(self.xrange, 0.01)
+
+    @property
+    def cons_satisfied(self):
+        return self.check_constraints()
 
     def fdr_thres_score(self, x, fdr_thres):
         fdr = self.fdr(x)
