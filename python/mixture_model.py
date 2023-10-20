@@ -527,11 +527,11 @@ class MixtureModel(MixtureModelBase):
                 for cname, cdist in self.all_comps.items():
                     mu_offset = np.random.uniform(0, 1)
                     # print(f'{cname} mu_offset {mu_offset}')
-                    # sigma_scale = np.random.uniform(0.5, 1.0)
-                    sigma_scale = 1.0
-                    # alpha_scale = np.random.uniform(0.0, 2.0)
-                    alpha_scale = 1.0
-                    mu -= 3 * mu_offset * sigma
+                    sigma_scale = np.random.uniform(0.5, 1.0)
+                    # sigma_scale = 1.0
+                    alpha_scale = np.random.uniform(0.0, 2.0)
+                    # alpha_scale = 1.0
+                    mu -= 2 * mu_offset * sigma
                     cdist.mu = np.float32(mu)
                     cdist.sigma = np.float32(sigma)
                     cdist.sigma *= np.float32(sigma_scale)
@@ -539,7 +539,7 @@ class MixtureModel(MixtureModelBase):
                     cdist.calc_alt_params()
                 # self.log(self.comps)
                 self.starting_pos = self.frozen()
-                self.plot(X, self.lls, self.sep_log_likelihood(X))
+                # self.plot(X, self.lls, self.sep_log_likelihood(X))
                 if self.check_constraints():
                     break
                 self.log('resample params')
