@@ -100,6 +100,8 @@ class MixtureModel(MixtureModelBase):
                 if cname not in self.all_comps:
                     self.all_comps[cname] = SN(skew_dirs[cname])
 
+        self.all_comps = dict(sorted(self.all_comps.items(), key=lambda x: comp_id[x[0]]))
+
         # self.comps = [{
         #     cname: SN(skew_dirs[cname]) for cname in sorted(set(comps), key=lambda x: comp_id[x])
         # } for comps in self.join_comps]
@@ -536,9 +538,9 @@ class MixtureModel(MixtureModelBase):
                     cdist.alpha = frozen_model.all_comps[cname].alpha * np.float32(alpha_scale)
                     cdist.calc_alt_params()
                 # self.log(self.comps)
+                self.starting_pos = self.frozen()
+                self.plot(X, self.lls, self.sep_log_likelihood(X))
                 if self.check_constraints():
-                    break
-                else:
                     break
                 self.log('resample params')
             self.log(self.comps)
