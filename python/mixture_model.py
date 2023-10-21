@@ -98,7 +98,7 @@ class MixtureModel(MixtureModelBase):
         for i in range(self.n_samples):
             for cname in self.join_comps[i]:
                 if cname not in self.all_comps:
-                    self.all_comps[cname] = SN(skew_dirs[cname])
+                    self.all_comps[cname] = SN(skew_dirs[cname], name=cname)
 
         self.all_comps = dict(sorted(self.all_comps.items(), key=lambda x: comp_id[x[0]]))
 
@@ -109,7 +109,7 @@ class MixtureModel(MixtureModelBase):
             cname: self.all_comps[cname] for cname in sorted(set(comps), key=lambda x: comp_id[x])
         } for comps in self.join_comps]
         self.weights = [{
-            cname: 1 for cname in sorted(set(comps), key=lambda x: comp_id[x])
+            cname: DynamicParam(1) for cname in sorted(set(comps), key=lambda x: comp_id[x])
         } for comps in self.join_comps]
         # self.weights = [
         #     NamedArray(sorted(set(comps), key=lambda x: comp_id[x]), 1)
@@ -523,7 +523,8 @@ class MixtureModel(MixtureModelBase):
                 mu = xmax
                 for i in range(len(self.comps)):
                     for j, (cname, _) in enumerate(self.comps[i].items()):
-                        self.weights[i][cname] = np.float32(1 / len(self.comps[i]))
+                        self.weights[i][cname].set(np.float32(1 / len(self.comps[i])))
+                self.weights[1]['C'] *= np.float32(0.001)
                 for cname, cdist in self.all_comps.items():
                     mu_offset = np.random.uniform(0, 1)
                     # print(f'{cname} mu_offset {mu_offset}')
@@ -531,7 +532,7 @@ class MixtureModel(MixtureModelBase):
                     # sigma_scale = 1.0
                     alpha_scale = np.random.uniform(0.0, 2.0)
                     # alpha_scale = 1.0
-                    mu -= 2 * mu_offset * sigma
+                    mu -= 3 * mu_offset * sigma
                     cdist.mu = np.float32(mu)
                     cdist.sigma = np.float32(sigma)
                     cdist.sigma *= np.float32(sigma_scale)
@@ -539,12 +540,11 @@ class MixtureModel(MixtureModelBase):
                     cdist.calc_alt_params()
                 # self.log(self.comps)
                 self.starting_pos = self.frozen()
-                # self.plot(X, self.lls, self.sep_log_likelihood(X))
+                self.plot(X, self.lls, self.sep_log_likelihood(X))
                 if self.check_constraints():
                     break
                 self.log('resample params')
             self.log(self.comps)
-            self.weights[1]['C'] *= np.float32(0.05)
         # elif self.init_strategy == 'one_sample':
         #     model1s = MixtureModel1S(self.skew_dirs, self.constraints, self.tolerance, self.binwidth, self.plotstep,
         #                              False, self.plot_interval, **self.kwargs)
@@ -553,11 +553,11 @@ class MixtureModel(MixtureModelBase):
             for i in range(len(self.comps)):
                 for j, (cname, _) in enumerate(self.comps[i].items()):
                     mu = X[:, 0].mean() + 0.5 * sigma - j * 0.5 * sigma
-                    self.weights[i][cname] = np.float32(1 / len(self.comps[i]))
+                    self.weights[i][cname].set(np.float32(1 / len(self.comps[i])))
                     self.comps[i][cname].mu = np.float32(mu)
                     self.comps[i][cname].sigma = np.float32(sigma)
                     self.comps[i][cname].calc_alt_params()
-            self.weights[1]['C'] *= np.float32(0.05)
+            self.weights[1]['C'] *= np.float32(0.001)
 
         self.ll = self.log_likelihood(X)
         self.lls = [self.ll]
@@ -584,8 +584,10 @@ class MixtureModel(MixtureModelBase):
         relative_constraints['IC_C_w2'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['C'],
                                                              weights=(self.weights[1]['IC'],
                                                                       self.weights[1]['C']),
+                                                             # weights=(lambda: self.weights[1]['IC'],
+                                                             #          lambda: self.weights[1]['C']),
                                                              x_range=x, pdf=self.weighted_pdf_constrained,
-                                                             cdf=False, mode=False)
+                                                             cdf=False, mode=False, left_tail=False)
         relative_constraints['IC_I1'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['I1'],
                                                            x_range=x, mode=self.mode_constrained,
                                                            pdf=self.pdf_constrained,
@@ -595,11 +597,11 @@ class MixtureModel(MixtureModelBase):
                                                                 x_range=x, mode=self.mode_constrained,
                                                                 pdf=self.pdf_constrained,
                                                                 cdf=self.cdf_constrained)
-            relative_constraints['IC_IC2_w2'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['IC2'],
-                                                                   weights=(self.weights[1]['IC'],
-                                                                            self.weights[1]['IC2']),
-                                                                   x_range=x, pdf=self.weighted_pdf_constrained,
-                                                                   cdf=False, mode=False)
+            # relative_constraints['IC_IC2_w2'] = RelativeConstraint(self.all_comps['IC'], self.all_comps['IC2'],
+            #                                                        weights=(self.weights[1]['IC'],
+            #                                                                 self.weights[1]['IC2']),
+            #                                                        x_range=x, pdf=self.weighted_pdf_constrained,
+            #                                                        cdf=False, mode=False, left_tail=False)
             relative_constraints['IC2_I1'] = RelativeConstraint(self.all_comps['IC2'], self.all_comps['I1'],
                                                                 x_range=x, mode=self.mode_constrained,
                                                                 pdf=self.pdf_constrained,
@@ -622,7 +624,7 @@ class MixtureModel(MixtureModelBase):
                 relative_constraints['C_IC'].getDistChecker('left'),
                 relative_constraints['IC_C_w2'].getDistChecker('right'),
                 relative_constraints['IC_IC2'].getDistChecker('right'),
-                relative_constraints['IC_IC2_w2'].getDistChecker('right'),
+                # relative_constraints['IC_IC2_w2'].getDistChecker('right'),
                 relative_constraints['IC_I1'].getDistChecker('right'),
             )
         else:
@@ -635,7 +637,7 @@ class MixtureModel(MixtureModelBase):
         if self.ic2_comp:
             comp_constraints['IC2'] = ComposedChecker(
                 relative_constraints['IC_IC2'].getDistChecker('left'),
-                relative_constraints['IC_IC2_w2'].getDistChecker('left'),
+                # relative_constraints['IC_IC2_w2'].getDistChecker('left'),
                 relative_constraints['IC2_I1'].getDistChecker('right'),
             )
         # elif cname == 'I1':
@@ -654,12 +656,12 @@ class MixtureModel(MixtureModelBase):
             comp_constraints['I2'] = relative_constraints['I1_I2'].getDistChecker('left')
 
     @property
-    def fdr_thres(self):
-        return self.fdr_thres_score(self.xrange, 0.01)
-
-    @property
     def cons_satisfied(self):
         return self.check_constraints()
+
+    @property
+    def fdr_thres(self):
+        return self.fdr_thres_score(self.xrange, 0.01)
 
     def fdr_thres_score(self, x, fdr_thres):
         fdr = self.fdr(x)
@@ -669,6 +671,10 @@ class MixtureModel(MixtureModelBase):
             return np.inf
         return x[inds[0]][0]
 
+    @property
+    def fdr_curve(self):
+        return self.fdr(self.xrange)
+
     def fdr(self, x):
         tp = self.weights[0]['C'] * (1 - self.all_comps['C'].cdf(x))
         fpic = self.weights[0]['IC'] * (1 - self.all_comps['IC'].cdf(x))
@@ -676,6 +682,11 @@ class MixtureModel(MixtureModelBase):
         fp = fpic + fpi1
         fdr = fp / (tp + fp)
         return fdr
+
+    def update_weights(self, new_weights):
+        for i in range(self.n_samples):
+            for cname, w in self.weights[i].items():
+                w.set(new_weights[i][cname])
 
     def fit(self, X):
         prev_ll = -np.inf
@@ -719,7 +730,7 @@ class MixtureModel(MixtureModelBase):
 
             def proj_weights():
                 cons = self.relative_constraints['IC_C_w2'].getWeightChecker('left')
-                old_w2c = self.weights[1]['C']
+                old_w2c = self.weights[1]['C'].get()
 
                 w2c = new_weights[1]['C']
                 w2ic = new_weights[1]['IC']
@@ -736,7 +747,8 @@ class MixtureModel(MixtureModelBase):
                 new_weights[1]['IC'] = w2ic
 
             proj_weights()
-            self.weights = new_weights
+            self.update_weights(new_weights)
+            # self.weights = new_weights
             # print('projected weights', self.weights)
 
             d = defaultdict(lambda: [None, [], []])

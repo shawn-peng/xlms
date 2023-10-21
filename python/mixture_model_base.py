@@ -52,7 +52,8 @@ class MixtureModelBase:
         return AttrObj({
             **{
                 k: deepcopy(self.__getattribute__(k))
-                for k in ['binwidth', 'plotstep', 'n_samples', 'weights', 'comps', 'all_comps', 'starting_pos', 'fdr_thres', 'title']
+                for k in ['binwidth', 'plotstep', 'n_samples', 'weights', 'comps', 'all_comps', 'starting_pos',
+                          'xrange', 'fdr_curve', 'fdr_thres', 'title']
             }})
 
     def __del__(self):
@@ -109,6 +110,7 @@ class MixtureModelBase:
             axs = fig.subplots(nsub, 1)
         else:
             axs = fig.axes
+            axs.pop().remove()
         for i in range(len(frozen_model.comps)):
             # print(f'plotting score {i + 1}')
             # xi = X[:, i]
@@ -146,17 +148,27 @@ class MixtureModelBase:
             ax.text(xmax * 0.76, ymax * 0.9, f'll = {slls[i]:.5f}')
             # print('draw legends')
             ax.legend(legends)
+
+        """ Plot ll """
         # ax = fig.subplot(nsub, 1, nsub, label=f'll_curve')
         ax = axs[-1]
         ax.cla()
         ax.plot(lls[1:])
         if lls:
             ax.text(0, lls[-1] - 0.1, f'll = {lls[-1]:.5f}')
+
+        """ Plot FDR & Title """
         ax = fig.axes[0]
         # plt.axes(ax)
         fdr1 = frozen_model.fdr_thres
         ax.axvline(fdr1)
         ax.text(fdr1, 0.005, '$\leftarrow$ 1% FDR threshold')
+
+        ax2 = ax.twinx()
+        ax2.cla()
+        ax2.set_ylim(0, 1)
+        ax2.plot(frozen_model.xrange, frozen_model.fdr_curve)
+
         if frozen_model.title:
             ax.set_title(frozen_model.title)
         plt.pause(0.01)

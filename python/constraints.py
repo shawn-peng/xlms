@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RelativeConstraint:
-    def __init__(self, right_dist, left_dist, x_range, weights=None, mode=False, pdf=True, cdf=False):
+    def __init__(self, right_dist, left_dist, x_range, weights=None, mode=False, pdf=True, cdf=False, left_tail=True):
         self.right_dist = right_dist
         self.left_dist = left_dist
         self.x_range = x_range
@@ -15,6 +15,7 @@ class RelativeConstraint:
         self.mode = mode
         self.pdf = pdf
         self.cdf = cdf
+        self.left_tail = left_tail
 
     def __repr__(self):
         return f'{self.right_dist, self.left_dist, self.weights}'
@@ -23,6 +24,11 @@ class RelativeConstraint:
         plt.figure()
         mode_right = self.right_dist.mode
         x_pdf = self.x_range[self.x_range > mode_right]
+        wr, wl = self.weights
+        if callable(wr):
+            wr = wr()
+        if callable(wl):
+            wl = wl()
         pr = self.right_dist.pdf(x_pdf)
         pl = self.left_dist.pdf(x_pdf)
         plt.plot(x_pdf, pr)
@@ -49,22 +55,23 @@ class RelativeConstraint:
             pl = self.left_dist.pdf(x_pdf)
             # for wr, wl in self.weights:
             # print('weights shape', wr.shape, wl.shape)
-            # if callable(wr):
-            #     wr = wr()
-            # if callable(wl):
-            #     wl = wl()
+            if callable(wr):
+                wr = wr()
+            if callable(wl):
+                wl = wl()
             # cond = wr * self.right_dist.pdf(x_pdf) >= wl * self.left_dist.pdf(x_pdf)
             cond = (wr * pr - wl * pl) >= -fuzzy
             if not cond.all():
                 return False
 
-            mode_left = self.left_dist.mode
-            x_pdf_l = self.x_range[self.x_range < mode_left]
-            pr_l = self.right_dist.pdf(x_pdf_l)
-            pl_l = self.left_dist.pdf(x_pdf_l)
-            cond = (wr * pl_l - wl * pr_l) >= -fuzzy
-            if not cond.all():
-                return False
+            if self.left_tail:
+                mode_left = self.left_dist.mode
+                x_pdf_l = self.x_range[self.x_range < mode_left]
+                pr_l = self.right_dist.pdf(x_pdf_l)
+                pl_l = self.left_dist.pdf(x_pdf_l)
+                cond = (wr * pl_l - wl * pr_l) >= -fuzzy
+                if not cond.all():
+                    return False
 
         if self.cdf:
             x_cdf = self.x_range
@@ -97,10 +104,10 @@ class WeightChecker:
         cons = self.constraint
         if self.comp == 'right':
             # cons.weights[0][()] = w
-            cons.weights[0] = w
+            cons.weights[0].set(w)
         elif self.comp == 'left':
             # cons.weights[1][()] = w
-            cons.weights[1] = w
+            cons.weights[1].set(w)
         return cons.check(fuzzy)
 
 

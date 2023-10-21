@@ -21,10 +21,11 @@ def trunc_norm_moments(mu, sigma):
 
 
 class SkewNormal:
-    def __init__(self, alpha=1, mu=0, sigma=1):
+    def __init__(self, alpha=1, mu=0, sigma=1, name=''):
         self.mu = mu
         self.sigma = sigma
         self.alpha = alpha
+        self.name = name
         self.delta = None
         self.Delta = None
         self.Gamma = None
@@ -33,9 +34,10 @@ class SkewNormal:
     @property
     def mode(self):
         self.calc_alt_params()
-        u_z = np.sqrt(2/np.pi) * self.delta
+        u_z = np.sqrt(2 / np.pi) * self.delta
         sigma_z = np.sqrt(1 - u_z ** 2)
-        gamma_1 = (4 - np.pi) / 2 * (self.delta * np.sqrt(2 / np.pi)) ** 3 / (1 - 2 * self.delta ** 2 / np.pi) ** (3/2)
+        gamma_1 = (4 - np.pi) / 2 * (self.delta * np.sqrt(2 / np.pi)) ** 3 / (1 - 2 * self.delta ** 2 / np.pi) ** (
+                    3 / 2)
         m0 = u_z - gamma_1 * sigma_z / 2 - np.sign(self.alpha) / 2 * np.exp(-2 * np.pi / np.abs(self.alpha))
         mode = self.mu + self.sigma * m0
         return mode
@@ -69,10 +71,10 @@ class SkewNormal:
         new_sn = SkewNormal(self.alpha, self.mu, self.sigma)
         new_sn.Delta = np.sum(weights * v * (X - self.mu)) / np.sum(weights * w)
         new_sn.Gamma = np.sum(weights * (
-                (X - new_sn.mu)**2
+                (X - new_sn.mu) ** 2
                 - 2 * v * (X - new_sn.mu) * new_sn.Delta
-                + w * new_sn.Delta**2)
-            ) / np.sum(weights)
+                + w * new_sn.Delta ** 2)
+                              ) / np.sum(weights)
         new_sn.from_alt_params()
         if dist_cons:
             sigma_test_func = dist_cons.get_param_checker('sigma')
@@ -111,5 +113,5 @@ class SkewNormal:
         return r
 
     def __repr__(self):
-        return f'<SkewNormal alpha={self.alpha}, mu={self.mu}, sigma={self.sigma}>'
-
+        return f'<SkewNormal{f" {self.name}" if self.name else ""}' \
+               f' alpha={self.alpha}, mu={self.mu}, sigma={self.sigma}>'

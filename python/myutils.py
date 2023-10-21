@@ -67,3 +67,32 @@ class AttrObj(object):
 
     def __repr__(self):
         return str(self)
+
+
+class DynamicParam:
+    def __init__(self, val, getter=None, setter=None):
+        self.val = val
+        # self.getter = getter
+        # self.setter = setter
+
+    def __mul__(self, other):
+        return self.val * other
+
+    def __str__(self):
+        return str(self.val)
+
+    def __format__(self, format_spec):
+        return self.val.__format__(format_spec)
+
+    def __float__(self):
+        return self.val
+
+    def get(self):
+        return self.val
+
+    def set(self, value):
+        self.val = value
+
+    def __imul__(self, other):
+        self.val *= other
+        return self
