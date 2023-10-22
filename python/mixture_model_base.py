@@ -53,7 +53,7 @@ class MixtureModelBase:
             **{
                 k: deepcopy(self.__getattribute__(k))
                 for k in ['binwidth', 'plotstep', 'n_samples', 'weights', 'comps', 'all_comps', 'starting_pos',
-                          'xrange', 'fdr_curve', 'fdr_thres', 'title']
+                          'xrange', 'plotting_xrange', 'fdr_curve', 'fdr_thres', 'title']
             }})
 
     def __del__(self):
@@ -67,6 +67,12 @@ class MixtureModelBase:
         xstep = (xmax - xmin) / self.n_xsamples
         # x = np.arange(xmin, xmax + self.plotstep, self.plotstep)
         self.xrange = np.arange(xmin, xmax + xstep, xstep)
+
+        xmax = np.max(X)
+        xmin = -50
+        # xmin = x.min()
+        # xmax = x.max()
+        self.plotting_xrange = np.arange(xmin, xmax + self.plotstep, self.plotstep)
 
     # def plot(self, X, lls, slls, finished=False):
     #     send = self.plot_pipe.send
@@ -99,7 +105,8 @@ class MixtureModelBase:
         xmin = -50
         # xmin = x.min()
         # xmax = x.max()
-        x = np.arange(xmin, xmax + frozen_model.plotstep, frozen_model.plotstep)
+        # x = np.arange(xmin, xmax + frozen_model.plotstep, frozen_model.plotstep)
+        x = frozen_model.plotting_xrange
         bins = np.arange(xmin, xmax + frozen_model.binwidth, frozen_model.binwidth)
         # distc = {}
         axs = []
@@ -168,7 +175,7 @@ class MixtureModelBase:
             ax2 = ax.twinx()
             ax2.cla()
             ax2.set_ylim(0, 1)
-            ax2.plot(frozen_model.xrange, frozen_model.fdr_curve)
+            ax2.plot(x, frozen_model.fdr_curve)
         except:
             print('failed to plot fdr')
 

@@ -673,7 +673,7 @@ class MixtureModel(MixtureModelBase):
 
     @property
     def fdr_curve(self):
-        return self.fdr(self.xrange)
+        return self.fdr(self.plotting_xrange)
 
     def fdr(self, x):
         tp = self.weights[0]['C'] * (1 - self.all_comps['C'].cdf(x))
@@ -714,6 +714,7 @@ class MixtureModel(MixtureModelBase):
         self.lls = [self.ll]
         self.slls = self.sep_log_likelihood(X)
         if self.show_plotting:
+            plt.ion()
             self.plot(X, self.lls, self.slls)
             pass
         prev_t = time.time()
