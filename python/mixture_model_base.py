@@ -160,14 +160,17 @@ class MixtureModelBase:
         """ Plot FDR & Title """
         ax = fig.axes[0]
         # plt.axes(ax)
-        fdr1 = frozen_model.fdr_thres
-        ax.axvline(fdr1)
-        ax.text(fdr1, 0.005, '$\leftarrow$ 1% FDR threshold')
+        try:
+            fdr1 = frozen_model.fdr_thres
+            ax.axvline(fdr1)
+            ax.text(fdr1, 0.005, '$\leftarrow$ 1% FDR threshold')
 
-        ax2 = ax.twinx()
-        ax2.cla()
-        ax2.set_ylim(0, 1)
-        ax2.plot(frozen_model.xrange, frozen_model.fdr_curve)
+            ax2 = ax.twinx()
+            ax2.cla()
+            ax2.set_ylim(0, 1)
+            ax2.plot(frozen_model.xrange, frozen_model.fdr_curve)
+        except:
+            print('failed to plot fdr')
 
         if frozen_model.title:
             ax.set_title(frozen_model.title)
