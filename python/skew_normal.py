@@ -53,7 +53,7 @@ class SkewNormal:
 
     def iterfit(self, X, weights, dist_cons=None):
         if dist_cons:
-            # assert dist_cons(self, 2e-7)
+            assert dist_cons(self, 2e-7)
             pass
         # new_sn = self
         tn_mu = self.delta / self.sigma * (X - self.mu)
@@ -99,8 +99,8 @@ class SkewNormal:
         # self.sigma = new_sn.sigma
         # self.alpha = new_sn.alpha
         if dist_cons:
-            pass
-            # assert dist_cons(self, 2e-7)
+            # pass
+            assert dist_cons(self, 2e-7)
         return new_sn
 
     def cdf(self, x):

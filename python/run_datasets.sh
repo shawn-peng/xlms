@@ -24,7 +24,8 @@ DOC_DATASETS
 conf=$2
 for dataset in $datasets;
 do
-	CUDA_VISIBLE_DEVICES=$1 python run.py -c $conf -d $dataset -p -i -j 1 &> ../log/${conf}_${dataset}.log &
+	CUDA_VISIBLE_DEVICES=$1 python run.py -c $conf -d $dataset &> ../log/${conf}_${dataset}.log &
+	echo $! >> running_pids.txt
 done
 
 tail -f ../log/${conf}_*.log

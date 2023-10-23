@@ -428,7 +428,7 @@ class MixtureModel(MixtureModelBase):
                     # print(solutions)
                 else:
                     # print(sys_eqs)
-                    solutions = sympy.solve(sys_eqs)
+                    solutions = sympy.nsolve(sys_eqs)
             except Exception as e:
                 return
 
@@ -497,7 +497,7 @@ class MixtureModel(MixtureModelBase):
 
     def check_constraints(self):
         for c, dist in self.all_comps.items():
-            if not self.comp_constraints[c](dist):
+            if not self.comp_constraints[c](dist, 2e-7):
                 return False
         return True
 
@@ -518,13 +518,15 @@ class MixtureModel(MixtureModelBase):
             # seed = 4
             print(f'seed {seed}')
             np.random.seed(seed)
+
+            for i in range(len(self.comps)):
+                for j, (cname, _) in enumerate(self.comps[i].items()):
+                    self.weights[i][cname].set(np.float32(1 / len(self.comps[i])))
+            self.weights[1]['C'] *= np.float32(0.001)
+
             frozen_model = self.frozen()
             while True:
                 mu = xmax
-                for i in range(len(self.comps)):
-                    for j, (cname, _) in enumerate(self.comps[i].items()):
-                        self.weights[i][cname].set(np.float32(1 / len(self.comps[i])))
-                self.weights[1]['C'] *= np.float32(0.001)
                 for cname, cdist in self.all_comps.items():
                     mu_offset = np.random.uniform(0, 1)
                     # print(f'{cname} mu_offset {mu_offset}')
@@ -540,7 +542,6 @@ class MixtureModel(MixtureModelBase):
                     cdist.calc_alt_params()
                 # self.log(self.comps)
                 self.starting_pos = self.frozen()
-                self.plot(X, self.lls, self.sep_log_likelihood(X))
                 if self.check_constraints():
                     break
                 self.log('resample params')

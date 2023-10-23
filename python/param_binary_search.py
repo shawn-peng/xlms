@@ -3,7 +3,7 @@ def param_binary_search(old_val, new_val, test_func, tolerance=1e-4):
     if test_func(new_val):
         return new_val
     if not test_func(old_val, 2e-7):
-        print('old_val does not satisfy constraint, skip')
+        # print('old_val does not satisfy constraint, skip')
         return new_val
     assert test_func(old_val, 2e-7)
 

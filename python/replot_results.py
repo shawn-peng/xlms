@@ -50,8 +50,8 @@ config = sys.argv[1]
 model_samples = 2
 gaussian_model = False
 ic2_comp = True
-dir_suffix = ''
-alpha_bases = [0.] if gaussian_model else [2.]
+dir_suffix = '_3'
+alpha_bases = [0.] if gaussian_model else [1., 2., 5.]
 
 model_class = f'{model_samples}S{"g" if gaussian_model else ""}{"2" if ic2_comp else ""}'
 
@@ -84,12 +84,15 @@ settings = {
 
 
 def plot_dataset(dataset_name):
+    res_dir = f'{base_figure_dir}/{dataset_name}'
+    models_pickle = f'{res_dir}/models.pickle'
+    if not os.path.exists(models_pickle):
+        return
+    models = pickle.load(open(models_pickle, 'rb'))
+
     tda_info = json.load(open(f'../results/info/{dataset_name}.json'))
     dataset = XLMS_Dataset(dataset_name)
     dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
-
-    res_dir = f'{base_figure_dir}/{dataset_name}'
-    models = pickle.load(open(f'{res_dir}/models.pickle', 'rb'))
 
     best = max(models, key=lambda x: x['ll'])
     # best = max(models, key=lambda x: x['slls'][0])
