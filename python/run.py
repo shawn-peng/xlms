@@ -1,5 +1,6 @@
 import json
 import multiprocessing
+import shutil
 # multiprocessing.set_start_method('spawn')
 import traceback
 
@@ -270,6 +271,7 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
             f" constraints={get_cons_str(settings[config]['constraints'])}"
             f" {'Y' if model['cons_sat'] else 'N'}")
         plt.savefig(f'{rand_dir}/{fname}')
+    shutil.copyfile(f'{rand_dir}/rank_1.png', res_dir + '_'.join(map(str, sls.values())) + '.png')
     return models[0]
 
 
@@ -347,7 +349,7 @@ def run_dataset(dataset_name):
     plt.axvline(tda_fdr1, linestyle='--')
     plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
-        f"{dataset_name} {best['sls']} ll={best['ll']:.05f}"
+        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {best['sls']} ll={best['ll']:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}"
         f" {'Y' if best['cons_sat'] else 'N'}")
     plt.savefig(f'{res_dir}/best.png')
