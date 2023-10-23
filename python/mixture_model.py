@@ -11,6 +11,7 @@ from param_binary_search import *
 from mixture_model_1S import MixtureModel1S
 from mixture_model_base import MixtureModelBase
 from myutils import *
+import traceback as tb
 
 from kanren import *
 import sympy
@@ -418,8 +419,10 @@ class MixtureModel(MixtureModelBase):
             sys_eqs = list(map(lambda x: x.subs(vals), sys_eqs))
             # sys_eqs = [x for x in sys_eqs if x != 0]
             try:
-                if use_nsolve:
-                    syms, guess = get_var_syms_n_guess()
+                # if active_cons == ('IC2', 'I1'):
+                #     solutions = solve_2IC2_2I1(sys_eqs, vals)
+                syms, guess = get_var_syms_n_guess()
+                if nactive > 1:
                     # solutions = sympy.nsolve(sys_eqs, syms, guess)
                     # solutions = [dict(zip(syms, solutions[:, j]))
                     #              for j in range(solutions.shape[1])]
@@ -428,8 +431,12 @@ class MixtureModel(MixtureModelBase):
                     # print(solutions)
                 else:
                     # print(sys_eqs)
-                    solutions = sympy.nsolve(sys_eqs)
+                    solutions = sympy.nsolve(sys_eqs, syms, guess)
+                    solutions = [dict(zip(syms, solutions[:, j]))
+                                 for j in range(solutions.shape[1])]
+                    # solutions = sympy.nsolve(sys_eqs)
             except Exception as e:
+                tb.print_exc()
                 return
 
             solutions = [s for s in solutions if all(map(lambda x: x.subs(s), self.pos_ws))]
@@ -511,6 +518,8 @@ class MixtureModel(MixtureModelBase):
         self.create_constraints()
 
         sigma = np.sqrt(X[:, 0].var())
+        # mu = X[:, 0].mean() + sigma
+        xmin = X.min()
         xmax = X.max()
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
@@ -527,6 +536,9 @@ class MixtureModel(MixtureModelBase):
             frozen_model = self.frozen()
             while True:
                 mu = xmax
+                j = 0
+                # mus = np.random.uniform(xmin, xmax, len(self.all_comps))
+                # mus[::-1].sort()
                 for cname, cdist in self.all_comps.items():
                     mu_offset = np.random.uniform(0, 1)
                     # print(f'{cname} mu_offset {mu_offset}')
@@ -536,12 +548,15 @@ class MixtureModel(MixtureModelBase):
                     # alpha_scale = 1.0
                     mu -= 3 * mu_offset * sigma
                     cdist.mu = np.float32(mu)
+                    # cdist.mu = np.float32(mu - (j + mu_offset) * sigma)
                     cdist.sigma = np.float32(sigma)
                     cdist.sigma *= np.float32(sigma_scale)
                     cdist.alpha = frozen_model.all_comps[cname].alpha * np.float32(alpha_scale)
                     cdist.calc_alt_params()
+                    j += 1
                 # self.log(self.comps)
-                self.starting_pos = self.frozen()
+                # self.starting_pos = self.frozen()
+                # self.plot(X, [], self.sep_log_likelihood(X))
                 if self.check_constraints():
                     break
                 self.log('resample params')

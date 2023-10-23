@@ -81,6 +81,9 @@ class DynamicParam:
     def __str__(self):
         return str(self.val)
 
+    def __repr__(self):
+        return str(self.val)
+
     def __format__(self, format_spec):
         return self.val.__format__(format_spec)
 
