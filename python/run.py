@@ -48,8 +48,8 @@ datasets = [
 SAMPLE_SIZE = 50000
 tolerance = 1e-8
 max_iteration = 5000
-# show_plotting = True
-show_plotting = False
+show_plotting = True
+# show_plotting = False
 plot_interval = 5
 # gaussian_model = True
 gaussian_model = False
@@ -71,12 +71,12 @@ if init_strategy == 'random' and parallel and inner_parallel:
 alpha_bases = [0.] if gaussian_model else [1., 2., 5.]
 # alpha_bases = [0.] if gaussian_model else [2.]
 
-run_all = True
-# run_all = False
+# run_all = True
+run_all = False
 # dataset_to_run = 'ecoli_xl'
-# dataset_to_run = 'alban'
+dataset_to_run = 'alban'
 # dataset_to_run = 'Alinden'
-dataset_to_run = 'D1810'
+# dataset_to_run = 'D1810'
 # dataset_to_run = 'MS2000225'
 if run_all:
     show_plotting = False
@@ -212,8 +212,8 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     # ll, lls = model.fit(dataset.mat.T)
     # model = pickle.load(open('temp_model.pickle', 'rb'))
     # model.initialized = True
+    ll, lls = model.fit(dataset.mat.T)
     try:
-        ll, lls = model.fit(dataset.mat.T)
         pass
     except Exception as e:
         print(f'Exception {traceback.format_exc()} happened for {dataset_name}, stopped at middle')
@@ -349,7 +349,7 @@ def run_dataset(dataset_name):
     plt.title(
         f"{dataset_name} {best['sls']} ll={best['ll']:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}"
-        f" {'Y' if model['cons_sat'] else 'N'}")
+        f" {'Y' if best['cons_sat'] else 'N'}")
     plt.savefig(f'{res_dir}/best.png')
 
 
