@@ -59,7 +59,7 @@ ic2_comp = True
 # ic2_comp = False
 # init_strategy = None
 init_strategy = 'random'
-random_size = 20
+random_size = 2
 parallel = True
 # parallel = False
 # inner_parallel = True
@@ -75,8 +75,8 @@ alpha_bases = [0.] if gaussian_model else [1., 2., 5.]
 # run_all = True
 run_all = False
 # dataset_to_run = 'ecoli_xl'
-dataset_to_run = 'alban'
-# dataset_to_run = 'Alinden'
+# dataset_to_run = 'alban'
+dataset_to_run = 'Alinden'
 # dataset_to_run = 'D1810'
 # dataset_to_run = 'MS2000225'
 if run_all:
@@ -102,13 +102,15 @@ config = 'unweighted_pdf_mode'
 # if len(sys.argv) > 1:
 #     config = sys.argv[1]
 
-dir_suffix = '_3'
+dir_suffix = '_4'
 
 parser = argparse.ArgumentParser(prog='XLMS')
-parser.add_argument('-c', '--config', default=config)
 parser.add_argument('-d', '--dataset', default=dataset_to_run)
-parser.add_argument('-s', '--suffix', default=dir_suffix)
+parser.add_argument('-c', '--config', default=config)
+parser.add_argument('-s', '--model_samples', type=int, default=model_samples)
+parser.add_argument('--suffix', default=dir_suffix)
 parser.add_argument('-j', '--jobs', type=int, default=num_workers)
+parser.add_argument('-r', '--random_size', type=int, default=random_size)
 parser.add_argument('-t', '--tolerance', type=float, default=tolerance)
 parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
@@ -118,14 +120,16 @@ args = parser.parse_args()
 
 print(args)
 
-config = args.config
 dataset_to_run = args.dataset
+config = args.config
+model_samples = args.model_samples
 dir_suffix = args.suffix
 tolerance = args.tolerance
 run_all = args.all
 parallel = args.parallel
 inner_parallel = args.inner_parallel
 num_workers = args.jobs
+random_size = args.random_size
 
 map_cons_str = {
     'weights':      'w',

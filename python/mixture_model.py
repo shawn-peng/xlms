@@ -434,9 +434,10 @@ class MixtureModel(MixtureModelBase):
                     solutions = sympy.nsolve(sys_eqs, syms, guess)
                     solutions = [dict(zip(syms, solutions[:, j]))
                                  for j in range(solutions.shape[1])]
-                    # solutions = sympy.nsolve(sys_eqs)
+                    # solutions = sympy.solve(sys_eqs)
             except Exception as e:
-                tb.print_exc()
+                # if e is not ZeroDivisionError:
+                #     tb.print_exc()
                 return
 
             solutions = [s for s in solutions if all(map(lambda x: x.subs(s), self.pos_ws))]
@@ -523,7 +524,7 @@ class MixtureModel(MixtureModelBase):
         xmax = X.max()
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
-            seed = self.seedoff
+            seed = self.seedoff + 1
             # seed = 4
             print(f'seed {seed}')
             np.random.seed(seed)

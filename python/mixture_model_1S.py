@@ -94,6 +94,40 @@ class MixtureModel1S(MixtureModelBase):
             p[i] = pj[i] / p0
         return p
 
+    def check_constraints(self):
+        for c, dist in self.all_comps.items():
+            if not self.comp_constraints[c](dist, 2e-7):
+                return False
+        return True
+
+    @property
+    def cons_satisfied(self):
+        return self.check_constraints()
+
+    @property
+    def fdr_thres(self):
+        return self.fdr_thres_score(self.xrange, 0.01)
+
+    def fdr_thres_score(self, x, fdr_thres):
+        fdr = self.fdr(x)
+        cond = fdr <= fdr_thres
+        inds = np.argwhere(cond)
+        if not len(inds):
+            return np.inf
+        return x[inds[0]][0]
+
+    @property
+    def fdr_curve(self):
+        return self.fdr(self.plotting_xrange)
+
+    def fdr(self, x):
+        tp = self.weights[0]['C'] * (1 - self.all_comps['C'].cdf(x))
+        fpic = self.weights[0]['IC'] * (1 - self.all_comps['IC'].cdf(x))
+        fpi1 = self.weights[0]['I1'] * (1 - self.all_comps['I1'].cdf(x))
+        fp = fpic + fpi1
+        fdr = fp / (tp + fp)
+        return fdr
+
     # def get_fitting_params
     def get_constraint(self, k):
         # if k == 'C_IC':
