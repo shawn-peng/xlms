@@ -102,7 +102,7 @@ config = 'unweighted_pdf_mode'
 # if len(sys.argv) > 1:
 #     config = sys.argv[1]
 
-dir_suffix = '_4'
+dir_suffix = ''
 
 parser = argparse.ArgumentParser(prog='XLMS')
 parser.add_argument('-d', '--dataset', default=dataset_to_run)
@@ -251,16 +251,21 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
 
 
 def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
-    if parallel and inner_parallel:
-        with multiprocessing.get_context('spawn').Pool(num_workers) as pool:
-            models = pool.starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)])
-    else:
-        models = list(starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)]))
-    models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
     rand_dir = f"{res_dir}/random_{'_'.join(map(str, sls.values()))}/"
-    if not os.path.exists(rand_dir):
-        os.makedirs(rand_dir)
-    pickle.dump(models, open(f'{rand_dir}/models.pickle', 'wb'))
+    models_pickle = f'{rand_dir}/models.pickle'
+    if os.path.exists(models_pickle):
+        models = pickle.load(open(models_pickle, 'rb'))
+    else:
+        if parallel and inner_parallel:
+            with multiprocessing.get_context('spawn').Pool(num_workers) as pool:
+                models = pool.starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)])
+        else:
+            models = list(starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)]))
+        models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
+        if not os.path.exists(rand_dir):
+            os.makedirs(rand_dir)
+        pickle.dump(models, open(models_pickle, 'wb'))
+
     fig = plt.figure(figsize=(16, 9))
     for i, model in enumerate(models):
         fname = f'rank_{i + 1}.png'
