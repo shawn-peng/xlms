@@ -49,8 +49,8 @@ datasets = [
 SAMPLE_SIZE = 50000
 tolerance = 1e-8
 max_iteration = 5000
-show_plotting = True
-# show_plotting = False
+# show_plotting = True
+show_plotting = False
 plot_interval = 5
 # gaussian_model = True
 gaussian_model = False
@@ -102,7 +102,7 @@ config = 'unweighted_pdf_mode'
 # if len(sys.argv) > 1:
 #     config = sys.argv[1]
 
-dir_suffix = ''
+dir_suffix = '_4'
 
 parser = argparse.ArgumentParser(prog='XLMS')
 parser.add_argument('-d', '--dataset', default=dataset_to_run)
@@ -111,6 +111,7 @@ parser.add_argument('-s', '--model_samples', type=int, default=model_samples)
 parser.add_argument('--suffix', default=dir_suffix)
 parser.add_argument('-j', '--jobs', type=int, default=num_workers)
 parser.add_argument('-r', '--random_size', type=int, default=random_size)
+parser.add_argument('-q', '--part', type=int, default=-1)
 parser.add_argument('-t', '--tolerance', type=float, default=tolerance)
 parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
@@ -130,6 +131,7 @@ parallel = args.parallel
 inner_parallel = args.inner_parallel
 num_workers = args.jobs
 random_size = args.random_size
+part = args.part
 
 map_cons_str = {
     'weights':      'w',
@@ -255,6 +257,7 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
     models_pickle = f'{rand_dir}/models.pickle'
     if os.path.exists(models_pickle):
         models = pickle.load(open(models_pickle, 'rb'))
+        print(models_pickle, 'loaded')
     else:
         if parallel and inner_parallel:
             with multiprocessing.get_context('spawn').Pool(num_workers) as pool:
@@ -328,6 +331,9 @@ def run_dataset(dataset_name):
         {'C': alpha_base, 'IC': alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
         {'C': alpha_base, 'IC': -alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
     ] for alpha_base in alpha_bases], [])
+    
+    if part >= 0:
+        choices = choices[part:part+1]
     # choices = [{'C': 0, 'IC': 0, 'IC2': 0, 'I1': 0, 'I2': 0}]
     # pool = multiprocessing.Pool(32)
 
