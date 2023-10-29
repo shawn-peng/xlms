@@ -17,7 +17,8 @@
 
 ((i = SLURM_ARRAY_TASK_ID % 10))
 
-./run_dataset_i.sh $i unweighted_pdf_mode
+./run_1S_dataset_i.sh $i unweighted_pdf_mode
+# ./run_dataset_i.sh $i unweighted_pdf_mode
 
 
 
