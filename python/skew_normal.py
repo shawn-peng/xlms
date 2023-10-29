@@ -108,9 +108,9 @@ class SkewNormal:
         return r
 
     def pdf(self, x):
-        # return stats.skewnorm.pdf(x, self.alpha, self.mu, self.sigma)
-        r = 2 * Normal(self.mu, self.sigma).pdf(x) * Normal().cdf(self.alpha * (x - self.mu) / self.sigma)
-        return r
+        return stats.skewnorm.pdf(x, self.alpha, self.mu, self.sigma)
+        # r = 2 * Normal(self.mu, self.sigma).pdf(x) * Normal().cdf(self.alpha * (x - self.mu) / self.sigma)
+        # return r
 
     def __repr__(self):
         return f'<SkewNormal{f" {self.name}" if self.name else ""}' \

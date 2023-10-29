@@ -53,7 +53,9 @@ class MixtureModelBase:
             **{
                 k: deepcopy(self.__getattribute__(k))
                 for k in ['binwidth', 'plotstep', 'n_samples', 'weights', 'comps', 'all_comps', 'starting_pos',
-                          'xrange', 'plotting_xrange', 'fdr_curve', 'fdr_thres', 'title']
+                          'xrange', 'plotting_xrange',
+                          # 'fdr_curve',
+                          'fdr_thres', 'title']
             }})
 
     def __del__(self):
