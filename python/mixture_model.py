@@ -263,9 +263,10 @@ class MixtureModel(MixtureModelBase):
             ws = self.weights[i]
             for j, (cname, cdist) in enumerate(self.comps[i].items()):
                 pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
-                truncate_zero(pj[i][:, j])
+                # truncate_zero(pj[i][:, j])
             p0 = np.sum(pj[i], 1).reshape((-1, 1))
             truncate_zero(p0)
+            # assert not np.any(p0)
             p[i] = pj[i] / p0
         return p
 

@@ -327,9 +327,10 @@ def run_dataset(dataset_name):
 
     # choices = [{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base}]
     choices = sum([[
+        #{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': alpha_base, 'I2': alpha_base},
         #{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
         {'C': alpha_base, 'IC': alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
-        {'C': alpha_base, 'IC': -alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
+        #{'C': alpha_base, 'IC': -alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
     ] for alpha_base in alpha_bases], [])
     
     if part >= 0:
