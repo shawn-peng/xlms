@@ -524,6 +524,7 @@ class MixtureModel(MixtureModelBase):
         mu = X[:, 0].mean()
         xmin = X.min()
         xmax = X.max()
+        xmin = -50.0
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
             seed = self.seedoff + 8
