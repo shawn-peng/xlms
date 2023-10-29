@@ -35,7 +35,7 @@ dataset=${datasets[i]}
 conf=$2
 part=$3
 
-python run.py -c $conf -d $dataset -q $part --suffix _4 -p -i -j 10 -r 10 # &> ../log/${conf}_${dataset}.log
+python run.py -c $conf -d $dataset -q $part --suffix _8 -r 40 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
 
 # tail -f ../log/${conf}_${dataset}.log
 
