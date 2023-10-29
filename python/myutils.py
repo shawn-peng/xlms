@@ -16,7 +16,12 @@ class TimeMeter:
 
 def truncate_zero(m):
     flags = m == 0
-    m[flags] = m[~flags].min()
+    assert not np.any(flags)
+    if all(flags):
+        lower_bound = 1e-9
+    else:
+        lower_bound = m[~flags].min()
+    m[flags] = lower_bound
 
 
 def choose_n(l, n):

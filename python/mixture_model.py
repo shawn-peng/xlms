@@ -493,7 +493,7 @@ class MixtureModel(MixtureModelBase):
         return res
 
     def putdata(self, X):
-        X = X[X[:, 1] != 0].astype(np.float32)
+        X = X[X[:, 1] != 0].astype(np.float64)
         self.X = X
         xmax = np.max(X)
         xmin = -100
@@ -525,15 +525,15 @@ class MixtureModel(MixtureModelBase):
         xmax = X.max()
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
-            seed = self.seedoff + 1
+            seed = self.seedoff + 8
             # seed = 4
             print(f'seed {seed}')
             np.random.seed(seed)
 
             for i in range(len(self.comps)):
                 for j, (cname, _) in enumerate(self.comps[i].items()):
-                    self.weights[i][cname].set(np.float32(1 / len(self.comps[i])))
-            self.weights[1]['C'] *= np.float32(0.001)
+                    self.weights[i][cname].set(np.float64(1 / len(self.comps[i])))
+            self.weights[1]['C'] *= np.float64(0.001)
 
             frozen_model = self.frozen()
             while True:
@@ -549,11 +549,11 @@ class MixtureModel(MixtureModelBase):
                     alpha_scale = np.random.uniform(0.0, 2.0)
                     # alpha_scale = 1.0
                     mu -= 2 * mu_offset * sigma
-                    cdist.mu = np.float32(mu)
-                    # cdist.mu = np.float32(mu - (j + mu_offset) * sigma)
-                    cdist.sigma = np.float32(sigma)
-                    cdist.sigma *= np.float32(sigma_scale)
-                    cdist.alpha = frozen_model.all_comps[cname].alpha * np.float32(alpha_scale)
+                    cdist.mu = np.float64(mu)
+                    # cdist.mu = np.float64(mu - (j + mu_offset) * sigma)
+                    cdist.sigma = np.float64(sigma)
+                    cdist.sigma *= np.float64(sigma_scale)
+                    cdist.alpha = frozen_model.all_comps[cname].alpha * np.float64(alpha_scale)
                     cdist.calc_alt_params()
                     j += 1
                 # self.log(self.comps)
@@ -571,11 +571,11 @@ class MixtureModel(MixtureModelBase):
             for i in range(len(self.comps)):
                 for j, (cname, _) in enumerate(self.comps[i].items()):
                     mu = X[:, 0].mean() + 0.5 * sigma - j * 0.5 * sigma
-                    self.weights[i][cname].set(np.float32(1 / len(self.comps[i])))
-                    self.comps[i][cname].mu = np.float32(mu)
-                    self.comps[i][cname].sigma = np.float32(sigma)
+                    self.weights[i][cname].set(np.float64(1 / len(self.comps[i])))
+                    self.comps[i][cname].mu = np.float64(mu)
+                    self.comps[i][cname].sigma = np.float64(sigma)
                     self.comps[i][cname].calc_alt_params()
-            self.weights[1]['C'] *= np.float32(0.001)
+            self.weights[1]['C'] *= np.float64(0.001)
 
         self.ll = self.log_likelihood(X)
         self.lls = [self.ll]
@@ -708,7 +708,7 @@ class MixtureModel(MixtureModelBase):
 
     def fit(self, X):
         prev_ll = -np.inf
-        # X = X[X[:, 1] != 0].astype(np.float32)
+        # X = X[X[:, 1] != 0].astype(np.float64)
         # xmax = np.max(X)
         # xmin = -100
         # xplot = np.arange(xmin, xmax + self.plotstep, self.plotstep)
