@@ -494,7 +494,7 @@ class MixtureModel(MixtureModelBase):
         return res
 
     def putdata(self, X):
-        X = X[X[:, 1] != 0].astype(np.float128)
+        X = X[X[:, 1] != 0].astype(np.float64)
         self.X = X
         xmax = np.max(X)
         xmin = -100
@@ -515,7 +515,7 @@ class MixtureModel(MixtureModelBase):
         print(f'{self.title} id {self.seedoff}:', *args)
 
     def init_model(self, X):
-        X = X.astype(np.float128)
+        X = X.astype(np.float64)
         self.log('start init ...')
         self.init_range(X)
 
@@ -535,34 +535,36 @@ class MixtureModel(MixtureModelBase):
 
             for i in range(len(self.comps)):
                 for j, (cname, _) in enumerate(self.comps[i].items()):
-                    self.weights[i][cname].set(np.float128(1 / len(self.comps[i])))
-            self.weights[1]['C'] *= np.float128(0.001)
+                    self.weights[i][cname].set(np.float64(1 / len(self.comps[i])))
+            self.weights[1]['C'] *= np.float64(0.001)
 
             frozen_model = self.frozen()
             while True:
-                # mu = xmax
+                mu = xmax
                 j = 0
                 # mus = np.random.uniform(xmin, xmax, len(self.all_comps))
                 # mus[::-1].sort()
+                """
                 IC = self.all_comps['IC']
                 IC.mu = np.random.uniform(mu - 1.5 * sigma, mu + 1.5 * sigma)
                 self.all_comps['C'].mu = np.random.uniform(IC.mu, xmax)
                 self.all_comps['I1'].mu = np.random.uniform(xmin, IC.mu)
                 self.all_comps['IC2'].mu = np.random.uniform(self.all_comps['I1'].mu, IC.mu)
                 self.all_comps['I2'].mu = np.random.uniform(xmin, self.all_comps['I1'].mu)
+                """
                 for cname, cdist in self.all_comps.items():
-                    # mu_offset = np.random.uniform(0, 1)
+                    mu_offset = np.random.uniform(0, 1)
                     # print(f'{cname} mu_offset {mu_offset}')
                     sigma_scale = np.random.uniform(0.5, 1.0)
                     # sigma_scale = 1.0
                     alpha_scale = np.random.uniform(0.0, 2.0)
                     # alpha_scale = 1.0
-                    # mu -= 2 * mu_offset * sigma
-                    # cdist.mu = np.float128(mu)
-                    # cdist.mu = np.float128(mu - (j + mu_offset) * sigma)
-                    cdist.sigma = np.float128(sigma)
-                    cdist.sigma *= np.float128(sigma_scale)
-                    cdist.alpha = frozen_model.all_comps[cname].alpha * np.float128(alpha_scale)
+                    mu -= 2.5 * mu_offset * sigma
+                    cdist.mu = np.float64(mu)
+                    # cdist.mu = np.float64(mu - (j + mu_offset) * sigma)
+                    cdist.sigma = np.float64(sigma)
+                    cdist.sigma *= np.float64(sigma_scale)
+                    cdist.alpha = frozen_model.all_comps[cname].alpha * np.float64(alpha_scale)
                     cdist.calc_alt_params()
                     j += 1
                 # self.log(self.comps)
@@ -580,11 +582,11 @@ class MixtureModel(MixtureModelBase):
             for i in range(len(self.comps)):
                 for j, (cname, _) in enumerate(self.comps[i].items()):
                     mu = X[:, 0].mean() + 0.5 * sigma - j * 0.5 * sigma
-                    self.weights[i][cname].set(np.float128(1 / len(self.comps[i])))
-                    self.comps[i][cname].mu = np.float128(mu)
-                    self.comps[i][cname].sigma = np.float128(sigma)
+                    self.weights[i][cname].set(np.float64(1 / len(self.comps[i])))
+                    self.comps[i][cname].mu = np.float64(mu)
+                    self.comps[i][cname].sigma = np.float64(sigma)
                     self.comps[i][cname].calc_alt_params()
-            self.weights[1]['C'] *= np.float128(0.001)
+            self.weights[1]['C'] *= np.float64(0.001)
 
         self.ll = self.log_likelihood(X)
         self.lls = [self.ll]
@@ -717,7 +719,7 @@ class MixtureModel(MixtureModelBase):
 
     def fit(self, X):
         prev_ll = -np.inf
-        # X = X[X[:, 1] != 0].astype(np.float128)
+        # X = X[X[:, 1] != 0].astype(np.float64)
         # xmax = np.max(X)
         # xmin = -100
         # xplot = np.arange(xmin, xmax + self.plotstep, self.plotstep)
