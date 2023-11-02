@@ -36,6 +36,13 @@ def choose_n(l, n):
     yield from choose_n(l[1:], n)
 
 
+def weighted_skewness(X, weights):
+    m = X.mean()
+    sigma = np.sqrt(X.var())
+    s = (weights * (X - m) ** 3).sum() / (weights.sum() * sigma ** 3)
+    return s
+
+
 class NamedArray(object):
     def __init__(self, fields, val=0):
         self.idx = {f: i for i, f in enumerate(fields)}

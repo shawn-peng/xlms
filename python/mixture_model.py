@@ -528,7 +528,8 @@ class MixtureModel(MixtureModelBase):
         xmin = -50.0
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
-            seed = self.seedoff + 8
+            seed = self.seedoff
+            # seed = self.seedoff + 8
             # seed = 4
             print(f'seed {seed}')
             np.random.seed(seed)
@@ -559,7 +560,7 @@ class MixtureModel(MixtureModelBase):
                     # sigma_scale = 1.0
                     alpha_scale = np.random.uniform(0.0, 2.0)
                     # alpha_scale = 1.0
-                    mu -= 2.5 * mu_offset * sigma
+                    mu -= 2 * mu_offset * sigma
                     cdist.mu = np.float64(mu)
                     # cdist.mu = np.float64(mu - (j + mu_offset) * sigma)
                     cdist.sigma = np.float64(sigma)

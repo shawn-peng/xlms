@@ -49,8 +49,8 @@ datasets = [
 SAMPLE_SIZE = 50000
 tolerance = 1e-8
 max_iteration = 5000
-# show_plotting = True
-show_plotting = False
+show_plotting = True
+# show_plotting = False
 plot_interval = 5
 # gaussian_model = True
 gaussian_model = False
@@ -112,6 +112,7 @@ parser.add_argument('--suffix', default=dir_suffix)
 parser.add_argument('-j', '--jobs', type=int, default=num_workers)
 parser.add_argument('-r', '--random_size', type=int, default=random_size)
 parser.add_argument('-q', '--part', type=int, default=-1)
+parser.add_argument('-o', '--random_i', type=int, default=-1)
 parser.add_argument('-t', '--tolerance', type=float, default=tolerance)
 parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
@@ -132,6 +133,7 @@ inner_parallel = args.inner_parallel
 num_workers = args.jobs
 random_size = args.random_size
 part = args.part
+random_i = args.random_i
 
 map_cons_str = {
     'weights':      'w',
@@ -327,10 +329,10 @@ def run_dataset(dataset_name):
 
     # choices = [{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base}]
     choices = sum([[
-        #{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': alpha_base, 'I2': alpha_base},
-        #{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
+        # {'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
+        # {'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': alpha_base, 'I2': alpha_base},
         {'C': alpha_base, 'IC': alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
-        #{'C': alpha_base, 'IC': -alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
+        {'C': alpha_base, 'IC': -alpha_base, 'IC2': -alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
     ] for alpha_base in alpha_bases], [])
     
     if part >= 0:
