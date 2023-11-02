@@ -545,23 +545,21 @@ class MixtureModel(MixtureModelBase):
                 j = 0
                 # mus = np.random.uniform(xmin, xmax, len(self.all_comps))
                 # mus[::-1].sort()
-                """
                 IC = self.all_comps['IC']
                 IC.mu = np.random.uniform(mu - 1.5 * sigma, mu + 1.5 * sigma)
                 self.all_comps['C'].mu = np.random.uniform(IC.mu, xmax)
                 self.all_comps['I1'].mu = np.random.uniform(xmin, IC.mu)
                 self.all_comps['IC2'].mu = np.random.uniform(self.all_comps['I1'].mu, IC.mu)
                 self.all_comps['I2'].mu = np.random.uniform(xmin, self.all_comps['I1'].mu)
-                """
                 for cname, cdist in self.all_comps.items():
-                    mu_offset = np.random.uniform(0, 1)
+                    # mu_offset = np.random.uniform(0, 1)
                     # print(f'{cname} mu_offset {mu_offset}')
-                    # sigma_scale = np.random.uniform(0.5, 1.0)
-                    sigma_scale = 1.0
-                    # alpha_scale = np.random.uniform(0.5, 2.0)
-                    alpha_scale = 1.0
-                    mu -= 2 * mu_offset * sigma
-                    cdist.mu = np.float64(mu)
+                    sigma_scale = np.random.uniform(0.5, 1.0)
+                    # sigma_scale = 1.0
+                    alpha_scale = np.random.uniform(0.5, 2.0)
+                    # alpha_scale = 1.0
+                    # mu -= 2 * mu_offset * sigma
+                    # cdist.mu = np.float64(mu)
                     # cdist.mu = np.float64(mu - (j + mu_offset) * sigma)
                     cdist.sigma = np.float64(sigma)
                     cdist.sigma *= np.float64(sigma_scale)
