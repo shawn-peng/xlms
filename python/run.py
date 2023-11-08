@@ -69,12 +69,15 @@ num_workers = 20
 if init_strategy == 'random' and parallel and inner_parallel:
     show_plotting = False
 
+if os.path.exists('on_server'):
+    show_plotting = False
+
 # alpha_base = 0. if gaussian_model else 2.
 alpha_bases = [0.] if gaussian_model else [1., 2., 5.]
 # alpha_bases = [0.] if gaussian_model else [2.]
 
-# run_all = True
-run_all = False
+run_all = True
+# run_all = False
 # dataset_to_run = 'ecoli_xl'
 # dataset_to_run = 'alban'
 dataset_to_run = 'Alinden'
