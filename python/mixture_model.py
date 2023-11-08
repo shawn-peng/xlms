@@ -543,6 +543,17 @@ class MixtureModel(MixtureModelBase):
             j += 1
         return mus
 
+    def rand_mus_disturb(self, mu, sigma, scale=1):
+        mus = {}
+        mu = mu + 2 * sigma
+        j = 0
+        for cname, cdist in self.all_comps.items():
+            mu_offset = np.random.uniform(0, 1)
+            mus[cname] = np.float64(mu + scale * mu_offset * sigma)
+            mu -= sigma
+            j += 1
+        return mus
+
     def rand_mus_split(self, xmax, xmin, mu, sigma, scale=1.5):
         mus = {}
         mus['IC'] = np.random.uniform(mu - scale * sigma, mu + scale * sigma)
@@ -605,6 +616,8 @@ class MixtureModel(MixtureModelBase):
             while True:
                 if self.mu_strategy == 'distance':
                     mus = self.rand_mus_distance(xmax, sigma)
+                elif self.mu_strategy == 'disturb':
+                    mus = self.rand_mus_disturb(mu, sigma)
                 elif self.mu_strategy == 'split':
                     mus = self.rand_mus_split(xmax, xmin, mu, sigma)
                 elif self.mu_strategy == 'uniform':
