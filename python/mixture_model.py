@@ -831,7 +831,10 @@ class MixtureModel(MixtureModelBase):
                 w2ic = new_weights[1]['IC']
                 old_sum = w2c + w2ic
                 new_w2c = param_binary_search(old_w2c, w2c, cons)
-                rw = new_w2c / (new_w2c + w2ic)
+                if new_w2c or w2ic:
+                    rw = new_w2c / (new_w2c + w2ic)
+                else:
+                    rw = 0
                 restw = w2c - new_w2c
                 w2c = new_w2c + rw * restw
                 w2ic += (1 - rw) * restw
