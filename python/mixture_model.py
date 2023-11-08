@@ -49,6 +49,7 @@ class MixtureModel(MixtureModelBase):
                  # title=None,
                  event_notify_func=None,
                  init_strategy=None,
+                 mu_strategy=None,
                  seedoff=0,
                  **kwargs):
         """
@@ -88,6 +89,7 @@ class MixtureModel(MixtureModelBase):
         self.n_samples = len(self.join_comps)
         self.constraints = constraints
         self.init_strategy = init_strategy
+        self.mu_strategy = mu_strategy
         self.kwargs = kwargs
         # constraint_types = constraints
         # self.comp_rels = {
@@ -514,12 +516,70 @@ class MixtureModel(MixtureModelBase):
     def log(self, *args):
         print(f'{self.title} id {self.seedoff}:', *args)
 
+    def rand_sigmas(self, sigma, slow=0.5, shigh=1.0):
+        sigmas = {}
+        for cname, cdist in self.all_comps.items():
+            # sigma_scale = np.random.uniform(slow, shigh)
+            sigma_scale = 1.0
+            sigmas[cname] = np.float64(sigma * sigma_scale)
+        return sigmas
+
+    def rand_alphas(self, alpha, slow=0.5, shigh=2.0):
+        alphas = {}
+        for cname, cdist in self.all_comps.items():
+            # alpha_scale = np.random.uniform(slow, shigh)
+            alpha_scale = 1.0
+            alphas[cname] = np.float64(alpha * alpha_scale)
+        return alphas
+
+    def rand_mus_distance(self, xmax, sigma, scale=2.5):
+        mus = {}
+        mu = xmax
+        j = 0
+        for cname, cdist in self.all_comps.items():
+            mu_offset = np.random.uniform(0, 1)
+            mu -= scale * mu_offset * sigma
+            mus[cname] = np.float64(mu)
+            j += 1
+        return mus
+
+    def rand_mus_split(self, xmax, xmin, mu, sigma, scale=1.5):
+        mus = {}
+        mus['IC'] = np.random.uniform(mu - scale * sigma, mu + scale * sigma)
+        mus['C'] = np.random.uniform(mus['IC'], xmax)
+        mus['I1'] = np.random.uniform(xmin, mus['IC'])
+        mus['IC2'] = np.random.uniform(mus['I1'], mus['IC'])
+        mus['I2'] = np.random.uniform(xmin, mus['I1'])
+        return mus
+
+    def mus_from_sample(self, sample):
+        sample = np.sort(sample)[::-1]
+        mus = {}
+        j = 0
+        for cname, cdist in self.all_comps.items():
+            mus[cname] = np.float64(sample[j])
+            j += 1
+        return mus
+
+    def rand_mus_uniform(self, xmax, xmin):
+        sample = np.random.uniform(xmin, xmax, len(self.all_comps))
+        mus = self.mus_from_sample(sample)
+        return mus
+
+    def rand_mus_gaussian(self, mu, sigma):
+        sample = np.random.normal(mu, sigma, len(self.all_comps))
+        mus = self.mus_from_sample(sample)
+        return mus
+
     def init_model(self, X):
         X = X.astype(np.float64)
         self.log('start init ...')
         self.init_range(X)
 
         self.create_constraints()
+
+        def plot():
+            self.plot(X, [], self.sep_log_likelihood(X))
 
         sigma = np.sqrt(X[:, 0].var())
         mu = X[:, 0].mean()
@@ -540,32 +600,25 @@ class MixtureModel(MixtureModelBase):
             self.weights[1]['C'] *= np.float64(0.001)
 
             frozen_model = self.frozen()
+            # self.starting_pos = self.frozen()
+            # plt.ion()
             while True:
-                mu = xmax
-                j = 0
-                # mus = np.random.uniform(xmin, xmax, len(self.all_comps))
-                # mus[::-1].sort()
-                IC = self.all_comps['IC']
-                IC.mu = np.random.uniform(mu - 1.5 * sigma, mu + 1.5 * sigma)
-                self.all_comps['C'].mu = np.random.uniform(IC.mu, xmax)
-                self.all_comps['I1'].mu = np.random.uniform(xmin, IC.mu)
-                self.all_comps['IC2'].mu = np.random.uniform(self.all_comps['I1'].mu, IC.mu)
-                self.all_comps['I2'].mu = np.random.uniform(xmin, self.all_comps['I1'].mu)
+                if self.mu_strategy == 'distance':
+                    mus = self.rand_mus_distance(xmax, sigma)
+                elif self.mu_strategy == 'split':
+                    mus = self.rand_mus_split(xmax, xmin, mu, sigma)
+                elif self.mu_strategy == 'uniform':
+                    mus = self.rand_mus_uniform(xmax, 50)
+                elif self.mu_strategy == 'gaussian':
+                    mus = self.rand_mus_gaussian(mu, sigma)
+                else:
+                    mus = self.rand_mus_uniform(xmax, 50)
+                sigmas = self.rand_sigmas(sigma)
+                alphas = self.rand_alphas(frozen_model.all_comps['C'].alpha)
                 for cname, cdist in self.all_comps.items():
-                    # mu_offset = np.random.uniform(0, 1)
-                    # print(f'{cname} mu_offset {mu_offset}')
-                    # sigma_scale = np.random.uniform(0.5, 1.0)
-                    sigma_scale = 1.0
-                    # alpha_scale = np.random.uniform(0.5, 2.0)
-                    alpha_scale = 1.0
-                    # mu -= 2 * mu_offset * sigma
-                    # cdist.mu = np.float64(mu)
-                    # cdist.mu = np.float64(mu - (j + mu_offset) * sigma)
-                    cdist.sigma = np.float64(sigma)
-                    cdist.sigma *= np.float64(sigma_scale)
-                    cdist.alpha = frozen_model.all_comps[cname].alpha * np.float64(alpha_scale)
-                    cdist.calc_alt_params()
-                    j += 1
+                    cdist.mu = mus[cname]
+                    cdist.sigma = sigmas[cname]
+                    cdist.alpha = alphas[cname]
                 # self.log(self.comps)
                 # self.starting_pos = self.frozen()
                 # self.plot(X, [], self.sep_log_likelihood(X))

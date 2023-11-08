@@ -59,6 +59,7 @@ ic2_comp = True
 # ic2_comp = False
 # init_strategy = None
 init_strategy = 'random'
+mu_strategy = 'gaussian'
 random_size = 2
 parallel = True
 # parallel = False
@@ -117,6 +118,7 @@ parser.add_argument('-t', '--tolerance', type=float, default=tolerance)
 parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
 parser.add_argument('-i', '--inner_parallel', action='store_true', default=False)
+parser.add_argument('--mu_strategy', default=mu_strategy)
 
 args = parser.parse_args()
 
@@ -134,6 +136,7 @@ num_workers = args.jobs
 random_size = args.random_size
 part = args.part
 random_i = args.random_i
+mu_strategy = args.mu_strategy
 
 map_cons_str = {
     'weights':      'w',
@@ -148,6 +151,7 @@ basic_settings = {'ic2_comp':      ic2_comp,
                   'show_plotting': show_plotting,
                   'plot_interval': plot_interval,
                   'init_strategy': init_strategy,
+                  'mu_strategy':   mu_strategy,
                   'max_iteration': max_iteration,
                   }
 
