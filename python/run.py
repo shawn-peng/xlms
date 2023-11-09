@@ -293,6 +293,13 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
             f" {'Y' if model['cons_sat'] else 'N'}")
         plt.savefig(f'{rand_dir}/{fname}')
     shutil.copyfile(f'{rand_dir}/rank_1.png', res_dir + '_'.join(map(str, sls.values())) + '.png')
+
+    """ Plot ll hist """
+    lls = [model['ll'] for model in models]
+    plt.figure()
+    plt.hist(lls)
+    plt.title(mu_strategy)
+    plt.savefig(f'{rand_dir}/ll_hist.png')
     return models[0]
 
 
