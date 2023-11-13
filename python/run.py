@@ -49,8 +49,8 @@ datasets = [
 SAMPLE_SIZE = 50000
 tolerance = 1e-8
 max_iteration = 5000
-show_plotting = True
-# show_plotting = False
+# show_plotting = True
+show_plotting = False
 plot_interval = 5
 # gaussian_model = True
 gaussian_model = False
@@ -228,11 +228,13 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     # ll, lls = model.fit(dataset.mat.T)
     # model = pickle.load(open('temp_model.pickle', 'rb'))
     # model.initialized = True
-    ll, lls = model.fit(dataset.mat.T)
     try:
+        ll, lls = model.fit(dataset.mat.T)
         pass
     except Exception as e:
         print(f'Exception {traceback.format_exc()} happened for {dataset_name}, stopped at middle')
+        dump_pickle = f'{res_dir}/model_{modelid}.pickle'
+        pickle.dump(model.frozen(), open(dump_pickle, 'wb'))
         ll = model.ll
         lls = model.lls
         model.plot(dataset.mat.T, model.lls, model.slls)
