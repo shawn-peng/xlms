@@ -272,9 +272,9 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
     else:
         if parallel and inner_parallel:
             with multiprocessing.get_context('spawn').Pool(num_workers) as pool:
-                models = pool.starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)])
+                models = pool.starmap(run_model, [(sls, dataset_name, dataset, tda_info, rand_dir, i) for i in range(n)])
         else:
-            models = list(starmap(run_model, [(sls, dataset_name, dataset, tda_info, res_dir, i) for i in range(n)]))
+            models = list(starmap(run_model, [(sls, dataset_name, dataset, tda_info, rand_dir, i) for i in range(n)]))
         models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
         if not os.path.exists(rand_dir):
             os.makedirs(rand_dir)
