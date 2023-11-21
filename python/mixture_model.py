@@ -444,6 +444,7 @@ class MixtureModel(MixtureModelBase):
                 #     tb.print_exc()
                 return
 
+            solutions = [s for s in solutions if all(map(lambda x: x.is_real, s.values()))]
             solutions = [s for s in solutions if all(map(lambda x: x.subs(s), self.pos_ws))]
             if len(solutions) < 1:
                 return
@@ -582,6 +583,19 @@ class MixtureModel(MixtureModelBase):
         mus = self.mus_from_sample(sample)
         return mus
 
+    def from_frozen(self, frozen_model, X):
+        self.init_range(X)
+        self.all_comps = deepcopy(frozen_model.all_comps)
+        for i in range(self.n_samples):
+            for j, cname in enumerate(self.comps[i].keys()):
+                self.comps[i][cname] = self.all_comps[cname]
+        self.weights = deepcopy(frozen_model.weights)
+        self.create_constraints()
+        self.starting_pos = frozen_model.starting_pos
+        self.initialized = True
+
+        self.plot(X, [], self.sep_log_likelihood(X))
+
     def init_model(self, X):
         X = X.astype(np.float64)
         self.log('start init ...')
@@ -600,6 +614,7 @@ class MixtureModel(MixtureModelBase):
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
             seed = self.seedoff
+            seed = 31
             # seed = self.seedoff + 8
             # seed = 4
             print(f'seed {seed}')
