@@ -215,6 +215,8 @@ def capture_args(locals):
 
 
 def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
     title = f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
     print('model:', modelid)
     if model_samples == 1:
