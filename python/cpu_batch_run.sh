@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=xlms_datasets
+#SBATCH --job-name=xlms
 #SBATCH --nodes=1
 #SBATCH --array=0-59
 #SBATCH --cpus-per-task=10
@@ -15,9 +15,12 @@
 
 ((i = SLURM_ARRAY_TASK_ID % 10))
 ((p = SLURM_ARRAY_TASK_ID / 10))
+mu_strategy=$1
+
+echo $mu_strategy
 
 # ./run_1S_dataset_i.sh $i unweighted_pdf_mode $p
-./run_dataset_i.sh $i unweighted_pdf_mode $p
+./run_dataset_i.sh $i unweighted_pdf_mode $p $mu_strategy
 
 
 

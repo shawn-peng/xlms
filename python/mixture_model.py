@@ -525,12 +525,13 @@ class MixtureModel(MixtureModelBase):
             sigmas[cname] = np.float64(sigma * sigma_scale)
         return sigmas
 
-    def rand_alphas(self, alpha, slow=0.5, shigh=2.0):
+    def rand_alphas(self, alpha_scale):
         alphas = {}
         for cname, cdist in self.all_comps.items():
             # alpha_scale = np.random.uniform(slow, shigh)
-            alpha_scale = 1.0
-            alphas[cname] = np.float64(alpha * alpha_scale)
+            alpha_scale = np.random.uniform(1 / alpha_scale, alpha_scale)
+            # alpha_scale = 1.0
+            alphas[cname] = np.float64(1.0 * np.sign(cdist.alpha) * alpha_scale)
         return alphas
 
     def rand_mus_distance(self, xmax, sigma, scale=2.5):
@@ -614,7 +615,7 @@ class MixtureModel(MixtureModelBase):
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
             seed = self.seedoff
-            seed = 31
+            # seed = 31
             # seed = self.seedoff + 8
             # seed = 4
             print(f'seed {seed}')

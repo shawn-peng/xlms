@@ -34,8 +34,9 @@ dataset=${datasets[i]}
 
 conf=$2
 part=$3
+mu_strategy=$4
 
-python run.py -c $conf -d $dataset -q $part --suffix _8 -r 40 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
+python run.py -c $conf -d $dataset -q $part --suffix _${mu_strategy} --mu_strategy ${mu_strategy} -r 40 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
 
 # tail -f ../log/${conf}_${dataset}.log
 
