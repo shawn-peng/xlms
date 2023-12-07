@@ -520,8 +520,8 @@ class MixtureModel(MixtureModelBase):
     def rand_sigmas(self, sigma, slow=0.5, shigh=1.0):
         sigmas = {}
         for cname, cdist in self.all_comps.items():
-            # sigma_scale = np.random.uniform(slow, shigh)
-            sigma_scale = 1.0
+            sigma_scale = np.random.uniform(slow, shigh)
+            # sigma_scale = 1.0
             sigmas[cname] = np.float64(sigma * sigma_scale)
         return sigmas
 
@@ -642,7 +642,7 @@ class MixtureModel(MixtureModelBase):
                     mus = self.rand_mus_gaussian(mu, sigma)
                 else:
                     mus = self.rand_mus_uniform(xmax, 50)
-                sigmas = self.rand_sigmas(sigma)
+                sigmas = self.rand_sigmas(sigma, 0.25, 1.0)
                 alphas = self.rand_alphas(frozen_model.all_comps['C'].alpha)
                 for cname, cdist in self.all_comps.items():
                     cdist.mu = mus[cname]
