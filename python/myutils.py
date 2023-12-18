@@ -1,6 +1,9 @@
 import time
 import json
 import pprint
+import sys
+if sys.platform == 'unix':
+    import fcntl
 
 import numpy as np
 
@@ -12,6 +15,18 @@ class TimeMeter:
     def read(self):
         t = time.time_ns()
         return (t - self.s) / 1e6
+
+
+def acquireLock(lockfile):
+    """ acquire exclusive lock file access """
+    locked_file_descriptor = open(lockfile, 'w+')
+    fcntl.lockf(locked_file_descriptor, fcntl.LOCK_EX)
+    return locked_file_descriptor
+
+
+def releaseLock(locked_file_descriptor):
+    """ release exclusive lock file access """
+    locked_file_descriptor.close()
 
 
 def truncate_zero(m):
