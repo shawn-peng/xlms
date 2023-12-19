@@ -2,7 +2,7 @@ import time
 import json
 import pprint
 import sys
-if sys.platform == 'unix':
+if sys.platform == 'linux':
     import fcntl
 
 import numpy as np
