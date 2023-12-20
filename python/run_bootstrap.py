@@ -218,17 +218,17 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
         pickle.dump(model.frozen(), open(dump_pickle, 'wb'))
         ll = model.ll
         lls = model.lls
-        model.plot(dataset.mat.T, model.lls, model.slls)
-    ax = plt.gcf().axes[0]
-    plt.axes(ax)
-    tda_fdr1 = tda_info['fdr_thres']
-    plt.axvline(tda_fdr1, linestyle='--')
-    plt.text(tda_fdr1, 0.003, r'$\leftarrow$ TDA 1% FDR threshold')
-    plt.title(
-        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f}"
-        f" constraints={get_cons_str(settings[config]['constraints'])}"
-        f" {'Y' if model.cons_satisfied else 'N'}")
-    plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
+        # model.plot(dataset.mat.T, model.lls, model.slls)
+    # ax = plt.gcf().axes[0]
+    # plt.axes(ax)
+    # tda_fdr1 = tda_info['fdr_thres']
+    # plt.axvline(tda_fdr1, linestyle='--')
+    # plt.text(tda_fdr1, 0.003, r'$\leftarrow$ TDA 1% FDR threshold')
+    # plt.title(
+    #     f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f}"
+    #     f" constraints={get_cons_str(settings[config]['constraints'])}"
+    #     f" {'Y' if model.cons_satisfied else 'N'}")
+    # plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
     return {
         'll':       ll,
         'lls':      lls,
