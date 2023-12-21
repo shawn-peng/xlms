@@ -273,6 +273,7 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
             f" constraints={get_cons_str(settings[config]['constraints'])}"
             f" {'Y' if model['cons_sat'] else 'N'}")
         plt.savefig(f'{rand_dir}/{fname}')
+        break
     shutil.copyfile(f'{rand_dir}/rank_1.png', res_dir + '_'.join(map(str, sls.values())) + '.png')
 
     """ Plot ll hist """
