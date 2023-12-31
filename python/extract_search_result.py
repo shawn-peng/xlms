@@ -12,11 +12,12 @@ import json
 from collections import defaultdict
 
 from load_search_result import load_idxmls, load_mzids
+from plot_search_result import plot_result
 
 info_dir = './results/info/'
 
 
-def extract_res(name):
+def extract_res(name, suffix=''):
     data_tab = load_idxmls(f'{name}/*.idXML', 'results/openpepxllf/knime4.6/')
     if not os.path.exists(info_dir):
         os.makedirs(info_dir)
@@ -81,9 +82,9 @@ def extract_idxml_smat(tab: pd.DataFrame, score_column='OpenPepXL:score', noisot
         specid = row['spectrum_reference']
         rank = row['xl_rank']
         s = row[score_column]
-        #         print(specid, rank, row['xl_type'], s)
-        #         for k, v in row.items():
-        #             print(k, v)
+        # print(specid, rank, row['xl_type'], s)
+        # for k, v in row.items():
+        #     print(k, v)
         if not s:
             continue
         if noisotope and spec_matches[specid] and spec_matches[specid][-1] == s:
@@ -103,9 +104,9 @@ def extract_idxml_smat(tab: pd.DataFrame, score_column='OpenPepXL:score', noisot
     return pd.DataFrame(spec_matches).transpose().rename(columns={0: 's1', 1: 's2'})
 
 
-def extract_to_matfile(tab, filename):
+def extract_to_matfile(tab, filename, keep_diff_xl_pos=False):
     matfiledata = {}  # make a dictionary to store the MAT data in
-    mat = extract_idxml_smat(tab)
+    mat = extract_idxml_smat(tab, keep_diff_xl_pos=keep_diff_xl_pos)
     matfiledata[u'mat'] = mat.to_numpy().T
     # *** u prefix for variable name = unicode format, no issues thru Python 3.5;
     # advise keeping u prefix indicator format based on feedback despite docs ***
@@ -128,7 +129,8 @@ def extract_to_matfile_for_dataset(name):
     data_tab['OpenPepXL:score'] = data_tab['OpenPepXL:score'].astype(float) * 300
 
     plot_result(data_tab)
-    extract_to_matfile(data_tab, f'{name}.mat')
+    # extract_to_matfile(data_tab, f'{name}.mat', keep_diff_xl_pos=True)
+    extract_to_matfile(data_tab, f'{name}_nodup.mat', keep_diff_xl_pos=False)
 
 
 def extract_TDA_info(data_tab, output_file):
