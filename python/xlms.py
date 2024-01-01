@@ -4,7 +4,7 @@ import hdf5storage
 
 
 class XLMS_Dataset:
-    def __init__(self, dataset_name, nodup=True):
+    def __init__(self, dataset_name, nodup=False):
         suffix = '_nodup' if nodup else ''
         self.data_file = f'../results/matdata/scoremats/{dataset_name}{suffix}.mat'
         self.mat_vars = hdf5storage.loadmat(self.data_file)
