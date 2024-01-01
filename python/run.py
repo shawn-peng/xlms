@@ -331,7 +331,7 @@ def run_dataset(dataset_name):
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
     tda_info = json.load(open(f'../results/info/{dataset_name}.json'))
-    dataset = XLMS_Dataset(dataset_name)
+    dataset = XLMS_Dataset(dataset_name, nodup=True)
     dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
 
     n = dataset.mat.shape[1]
