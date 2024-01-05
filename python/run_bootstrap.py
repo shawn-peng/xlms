@@ -123,6 +123,7 @@ parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
 parser.add_argument('-i', '--inner_parallel', action='store_true', default=False)
 parser.add_argument('--mu_strategy', default=mu_strategy)
+parser.add_argument('--bootstrap_i', type=int, default=0)
 
 args = parser.parse_args()
 
@@ -141,6 +142,7 @@ random_size = args.random_size
 part = args.part
 random_i = args.random_i
 mu_strategy = args.mu_strategy
+bootstrap_i = args.bootstrap_i
 
 map_cons_str = {
     'weights':      'w',
@@ -187,28 +189,11 @@ def get_cons_str(constraints):
     return ';'.join(map(lambda x: map_cons_str[x], constraints))
 
 
+bootstrap_dir = '../bootstrap/'
+
 model_class = f'{model_samples}S{"g" if gaussian_model else ""}{"2" if ic2_comp else ""}'
 base_figure_dir = None
 
-
-# base_figure_dir = f'figures_python_diffsign_{model_class}_{config}_initskew_{alpha_base:.0f}'
-
-
-# base_figure_dir = f'figures_python_2S_{config}'
-
-
-## Code Structure with random
-# for i in range(10):
-#   model new
-#   model.fit
-#   models.append
-# #parallel
-# pool.map
-# mkdir random
-# rank and save all rand models into random dir
-# pickle models
-# for i:
-#   model[i].plot and save
 
 def capture_args(locals):
     # return {k: locals[k] for k in ['dataset_name', 'dataset', 'res_dir']}
@@ -219,16 +204,11 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     title = f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
     print('model:', modelid)
     if model_samples == 1:
-        model = MixtureModel1S(sls, **settings[config], title=title, seedoff=modelid)
+        model = MixtureModel1S(sls, **settings[config], title=title)
     elif model_samples == 2:
         model = MixtureModel(sls, **settings[config], title=title, seedoff=modelid)
-    # comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
-    comps = {'C': Norm(), 'IC': SN(1), 'I': SN(-1)}
-    # comps = {'C': Norm(), 'IC': Norm(), 'I': Norm()}
-    # model = OrderStatMixtureModel(**settings['common'])
-    # ll, lls = model.fit(dataset.mat.T)
-    # model = pickle.load(open('temp_model.pickle', 'rb'))
-    # model.initialized = True
+    else:
+        assert False, 'Invalid model samples'
     try:
         ll, lls = model.fit(dataset.mat.T)
         pass
@@ -238,22 +218,17 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
         pickle.dump(model.frozen(), open(dump_pickle, 'wb'))
         ll = model.ll
         lls = model.lls
-        model.plot(dataset.mat.T, model.lls, model.slls)
-    # models[i]['ll'] = ll
-    # models[i]['lls'] = lls
-    # models[i]['sls'] = sls
-    # models[i]['model'] = model
-    # plt.subplot(3, 1, 1)
-    ax = plt.gcf().axes[0]
-    plt.axes(ax)
-    tda_fdr1 = tda_info['fdr_thres']
-    plt.axvline(tda_fdr1, linestyle='--')
-    plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
-    plt.title(
-        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f}"
-        f" constraints={get_cons_str(settings[config]['constraints'])}"
-        f" {'Y' if model.cons_satisfied else 'N'}")
-    plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
+        # model.plot(dataset.mat.T, model.lls, model.slls)
+    # ax = plt.gcf().axes[0]
+    # plt.axes(ax)
+    # tda_fdr1 = tda_info['fdr_thres']
+    # plt.axvline(tda_fdr1, linestyle='--')
+    # plt.text(tda_fdr1, 0.003, r'$\leftarrow$ TDA 1% FDR threshold')
+    # plt.title(
+    #     f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f}"
+    #     f" constraints={get_cons_str(settings[config]['constraints'])}"
+    #     f" {'Y' if model.cons_satisfied else 'N'}")
+    # plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
     return {
         'll':       ll,
         'lls':      lls,
@@ -292,12 +267,13 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
         plt.axes(ax)
         tda_fdr1 = tda_info['fdr_thres']
         plt.axvline(tda_fdr1, linestyle='--')
-        plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
+        plt.text(tda_fdr1, 0.003, r'$\leftarrow$ TDA 1% FDR threshold')
         plt.title(
             f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} ll={model['ll']:.05f}"
             f" constraints={get_cons_str(settings[config]['constraints'])}"
             f" {'Y' if model['cons_sat'] else 'N'}")
         plt.savefig(f'{rand_dir}/{fname}')
+        break
     shutil.copyfile(f'{rand_dir}/rank_1.png', res_dir + '_'.join(map(str, sls.values())) + '.png')
 
     """ Plot ll hist """
@@ -309,45 +285,29 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
     return models[0]
 
 
-def enum_signs(comps):
-    def get_signs(n, prefix):
-        if not n:
-            yield {cname: s for s, cname in zip(prefix, comps)}
-            return
-        yield from get_signs(n - 1, prefix + (+1,))
-        yield from get_signs(n - 1, prefix + (-1,))
+def run_bootstrap_i(dataset_name, bootstrap_i):
+    """ Bootstrap for a dataset with the same configuration
 
-    yield from get_signs(len(comps), ())
+    """
+    dataset = XLMS_Dataset(dataset_to_run)
 
+    bs_indices = pickle.load(open(f'{bootstrap_dir}/index.pickle', 'rb'))
 
-def run_dataset(dataset_name):
+    bs_index = bs_indices[dataset_name][bootstrap_i]
+
+    dataset.mat = dataset.mat[:, bs_index]
+
     global base_figure_dir
-    base_figure_dir = f'figures_python_diffsign_{model_class}_{config}{dir_suffix}' \
-                      f'_initskew_{"_".join([f"{alpha_base:.0f}" for alpha_base in alpha_bases])}'
+    base_dir = f'{bootstrap_dir}/diffsign_{model_class}_{config}{dir_suffix}' \
+               f'_initskew_{"_".join([f"{alpha_base:.0f}" for alpha_base in alpha_bases])}'
 
-    # res_dir = f'../figures_python_1S_{config}/{dataset_name}/'
-    res_dir = f'../{base_figure_dir}/{dataset_name}/'
-    # res_dir = f'../figures_python_order_stats_skewnorm_IC_I/{dataset_name}/'
+    res_dir = f'{base_dir}/{dataset_name}/{bootstrap_i}/'
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
     tda_info = json.load(open(f'../results/info/{dataset_name}.json'))
-    dataset = XLMS_Dataset(dataset_name, nodup=True)
+
     dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
 
-    n = dataset.mat.shape[1]
-    if SAMPLE_SIZE > 0:
-        nsample = min(SAMPLE_SIZE, n)
-        np.random.seed(42)
-        rind = np.random.choice(np.arange(n), nsample, replace=False)
-        dataset.mat = dataset.mat[:, rind]
-
-    # choices = [sls for sls in enum_signs(['C', 'IC', 'IC2', 'I1', 'I2']) if
-    #            sls['C'] > 0 > sls['I1'] == sls['I2']]
-    # models = [{} for _ in range(len(choices))]
-
-    # for i, sls in enumerate(choices):
-
-    # choices = [{'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base}]
     choices = sum([[
         # {'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': -alpha_base, 'I2': -alpha_base},
         # {'C': alpha_base, 'IC': alpha_base, 'IC2': alpha_base, 'I1': alpha_base, 'I2': alpha_base},
@@ -357,13 +317,9 @@ def run_dataset(dataset_name):
 
     if part >= 0:
         choices = choices[part:part + 1]
-    # choices = [{'C': 0, 'IC': 0, 'IC2': 0, 'I1': 0, 'I2': 0}]
-    # pool = multiprocessing.Pool(32)
 
-    # kwargs = capture_args(locals())
     args = capture_args(locals())
 
-    # models = pickle.load(open(f'{res_dir}models.pickle', 'rb'))
     if init_strategy == 'random':
         models = list(
             map(lambda sls: run_rand_models(random_size, sls, dataset_name, dataset, tda_info, res_dir), choices))
@@ -390,7 +346,7 @@ def run_dataset(dataset_name):
     ax = plt.gcf().axes[0]
     plt.axes(ax)
     plt.axvline(tda_fdr1, linestyle='--')
-    plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
+    plt.text(tda_fdr1, 0.003, r'$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
         f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {best['sls']} ll={best['ll']:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}"
@@ -398,27 +354,7 @@ def run_dataset(dataset_name):
     plt.savefig(f'{res_dir}/best.png')
 
 
-# run_dataset('alban')
-# for dataset_name in datasets:
-#     run_dataset(dataset_name)
-# pool = multiprocessing.Pool(num_workers)
 if __name__ == '__main__':
-    if run_all:
-        if parallel and not inner_parallel:
-            with multiprocessing.get_context('spawn').Pool(num_workers) as pool:
-                res = list(pool.map(run_dataset, datasets))
-        else:
-            res = list(map(run_dataset, datasets))
-    else:
-        run_dataset(dataset_to_run)
-        # run_dataset('KKT4')
-        # run_dataset('peplib')
-        # run_dataset('alban')
-        # run_dataset('Alinden')
-        # run_dataset('ALott')
-        # run_dataset('MS2000225')
-    # subprocess.call(['C:\\cygwin64\\bin\\bash.exe', '-l', '../copy_best_figures.sh', base_figure_dir],
-    #                 cwd='../')
+    run_bootstrap_i(dataset_to_run, bootstrap_i)
 
-    print(base_figure_dir)
-    os.system(f'cd .. && ./copy_best_figures.sh {base_figure_dir}')
+

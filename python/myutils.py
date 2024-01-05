@@ -1,6 +1,9 @@
 import time
 import json
 import pprint
+import sys
+if sys.platform == 'linux':
+    import fcntl
 
 import numpy as np
 
@@ -14,9 +17,29 @@ class TimeMeter:
         return (t - self.s) / 1e6
 
 
+def acquireLock(lockfile):
+    """ acquire exclusive lock file access """
+    locked_file_descriptor = open(lockfile, 'w+')
+    fcntl.lockf(locked_file_descriptor, fcntl.LOCK_EX)
+    return locked_file_descriptor
+
+
+def releaseLock(locked_file_descriptor):
+    """ release exclusive lock file access """
+    locked_file_descriptor.close()
+
+
 def truncate_zero(m):
-    flags = m == 0
-    m[flags] = m[~flags].min()
+    # flags = m == 0
+    # assert not np.any(flags)
+    # if all(flags):
+    #     lower_bound = 1e-300
+    # else:
+    #     lower_bound = m[~flags].min()
+    # lower_bound = 1e-300
+    lower_bound = np.finfo(m.dtype).tiny
+    flags = m < lower_bound
+    m[flags] = lower_bound
 
 
 def choose_n(l, n):
@@ -29,6 +52,13 @@ def choose_n(l, n):
     for r in choose_n(l[1:], n - 1):
         yield (x,) + r
     yield from choose_n(l[1:], n)
+
+
+def weighted_skewness(X, weights):
+    m = X.mean()
+    sigma = np.sqrt(X.var())
+    s = (weights * (X - m) ** 3).sum() / (weights.sum() * sigma ** 3)
+    return s
 
 
 class NamedArray(object):

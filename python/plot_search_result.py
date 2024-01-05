@@ -13,7 +13,7 @@ def plot_result(tab):
     i = 0
     for col in (tab.columns):
         dtype = tab[col].dtype
-        if dtype not in [np.float64, np.int]:
+        if dtype not in [np.float64, np.int32, np.int64]:
             continue
         i += 1
         plt.subplot(sp_nrow, sp_ncol, i)

@@ -33,6 +33,9 @@ class MixtureModel1S(MixtureModelBase):
                  plotstep=0.1,
                  show_plotting=False,
                  plot_interval=1,
+                 init_strategy=None,
+                 mu_strategy=None,
+                 seedoff=0,
                  **kwargs):
         """
 
@@ -55,7 +58,9 @@ class MixtureModel1S(MixtureModelBase):
         ]
         self.n_samples = len(self.join_comps)
         self.constraints = constraints
-        self.starting_pos = None
+        self.init_strategy = init_strategy
+        self.mu_strategy = mu_strategy
+        self.seedoff = seedoff
         # self.comp_rels = {
         #     'C': 'IC',
         #     'IC': 'I1',
@@ -65,7 +70,7 @@ class MixtureModel1S(MixtureModelBase):
             cname: SN(skew_dirs[cname]) for cname in sorted(set(comps), key=lambda x: comp_id[x])
         } for comps in self.join_comps]
         self.weights = [{
-            cname: 1 for cname in sorted(set(comps), key=lambda x: comp_id[x])
+            cname: DynamicParam(1) for cname in sorted(set(comps), key=lambda x: comp_id[x])
         } for comps in self.join_comps]
 
         self.all_comps = {}
@@ -78,6 +83,160 @@ class MixtureModel1S(MixtureModelBase):
         self.pdf_constrained = 'pdf' in constraints
         self.cdf_constrained = 'cdf' in constraints
         self.weighted_pdf_constrained = 'weighted_pdf' in constraints
+        self.initialized = False
+        self.starting_pos = None
+        self.lls = []
+        self.ll = None
+        self.stopped = False
+
+    def log(self, *args):
+        print(f'{self.title} id {self.seedoff}:', *args)
+
+    def rand_sigmas(self, sigma, slow=0.5, shigh=1.0):
+        sigmas = {}
+        for cname, cdist in self.all_comps.items():
+            sigma_scale = np.random.uniform(slow, shigh)
+            # sigma_scale = 1.0
+            sigmas[cname] = np.float64(sigma * sigma_scale)
+        return sigmas
+
+    def rand_alphas(self, alpha_scale):
+        alphas = {}
+        for cname, cdist in self.all_comps.items():
+            # alpha_scale = np.random.uniform(slow, shigh)
+            alpha_scale = np.random.uniform(1 / alpha_scale, alpha_scale)
+            # alpha_scale = 1.0
+            alphas[cname] = np.float64(1.0 * np.sign(cdist.alpha) * alpha_scale)
+        return alphas
+
+    def rand_mus_distance(self, xmax, sigma, scale=2.5):
+        mus = {}
+        mu = xmax
+        j = 0
+        for cname, cdist in self.all_comps.items():
+            mu_offset = np.random.uniform(0, 1)
+            mu -= scale * mu_offset * sigma
+            mus[cname] = np.float64(mu)
+            j += 1
+        return mus
+
+    def rand_mus_disturb(self, mu, sigma, scale=1):
+        mus = {}
+        mu = mu + 2 * sigma
+        j = 0
+        for cname, cdist in self.all_comps.items():
+            mu_offset = np.random.uniform(0, 1)
+            mus[cname] = np.float64(mu + scale * mu_offset * sigma)
+            mu -= sigma
+            j += 1
+        return mus
+
+    def rand_mus_split(self, xmax, xmin, mu, sigma, scale=1.5):
+        mus = {}
+        mus['IC'] = np.random.uniform(mu - scale * sigma, mu + scale * sigma)
+        mus['C'] = np.random.uniform(mus['IC'], xmax)
+        mus['I1'] = np.random.uniform(xmin, mus['IC'])
+        return mus
+
+    def mus_from_sample(self, sample):
+        sample = np.sort(sample)[::-1]
+        mus = {}
+        j = 0
+        for cname, cdist in self.all_comps.items():
+            mus[cname] = np.float64(sample[j])
+            j += 1
+        return mus
+
+    def rand_mus_uniform(self, xmax, xmin):
+        sample = np.random.uniform(xmin, xmax, len(self.all_comps))
+        mus = self.mus_from_sample(sample)
+        return mus
+
+    def rand_mus_gaussian(self, mu, sigma):
+        sample = np.random.normal(mu, sigma, len(self.all_comps))
+        mus = self.mus_from_sample(sample)
+        return mus
+
+    def init_model(self, X):
+        X = X.astype(np.float64)
+        self.log('start init ...')
+        self.init_range(X)
+
+        self.create_constraints()
+
+        def plot():
+            self.plot(X, [], self.sep_log_likelihood(X))
+
+        sigma = np.sqrt(X[:, 0].var())
+        mu = X[:, 0].mean()
+        xmin = X.min()
+        xmax = X.max()
+        xmin = -50.0
+        if self.init_strategy == 'random':
+            # seed = int(time.time()) + self.seedoff
+            seed = self.seedoff
+            # seed = 31
+            # seed = self.seedoff + 8
+            # seed = 4
+            print(f'seed {seed}')
+            np.random.seed(seed)
+
+            for i in range(len(self.comps)):
+                for j, (cname, _) in enumerate(self.comps[i].items()):
+                    self.weights[i][cname].set(np.float64(1 / len(self.comps[i])))
+
+            frozen_model = self.frozen()
+            # self.starting_pos = self.frozen()
+            # plt.ion()
+            while True:
+                if self.mu_strategy == 'distance':
+                    mus = self.rand_mus_distance(xmax, sigma)
+                elif self.mu_strategy == 'disturb':
+                    mus = self.rand_mus_disturb(mu, sigma)
+                elif self.mu_strategy == 'split':
+                    mus = self.rand_mus_split(xmax, xmin, mu, sigma)
+                elif self.mu_strategy == 'uniform':
+                    mus = self.rand_mus_uniform(xmax, 50)
+                elif self.mu_strategy == 'gaussian':
+                    mus = self.rand_mus_gaussian(mu, sigma)
+                else:
+                    mus = self.rand_mus_uniform(xmax, 50)
+                sigmas = self.rand_sigmas(sigma, 0.25, 1.0)
+                alphas = self.rand_alphas(frozen_model.all_comps['C'].alpha)
+                for cname, cdist in self.all_comps.items():
+                    cdist.mu = mus[cname]
+                    cdist.sigma = sigmas[cname]
+                    cdist.alpha = alphas[cname]
+                # self.log(self.comps)
+                # self.starting_pos = self.frozen()
+                # self.plot(X, [], self.sep_log_likelihood(X))
+                if self.check_constraints():
+                    break
+                self.log('resample params')
+            self.log(self.comps)
+        # elif self.init_strategy == 'one_sample':
+        #     model1s = MixtureModel1S(self.skew_dirs, self.constraints, self.tolerance, self.binwidth, self.plotstep,
+        #                              False, self.plot_interval, **self.kwargs)
+        #     model1s.fit(X)
+        else:
+            for i in range(len(self.comps)):
+                for j, (cname, _) in enumerate(self.comps[i].items()):
+                    mu = X[:, 0].mean() + 0.5 * sigma - j * 0.5 * sigma
+                    self.weights[i][cname].set(np.float64(1 / len(self.comps[i])))
+                    self.comps[i][cname].mu = np.float64(mu)
+                    self.comps[i][cname].sigma = np.float64(sigma)
+                    self.comps[i][cname].calc_alt_params()
+
+        self.ll = self.log_likelihood(X)
+        self.lls = [self.ll]
+        self.slls = self.sep_log_likelihood(X)
+
+        self.starting_pos = self.frozen()
+        self.initialized = True
+
+        if self.show_plotting:
+            self.plot(X, self.lls, self.slls)
+        self.log('init finished ...')
 
     def pred(self, X):
         X = np.array(X)
@@ -145,6 +304,11 @@ class MixtureModel1S(MixtureModelBase):
 
         return res
 
+    def update_weights(self, new_weights):
+        for i in range(self.n_samples):
+            for cname, w in self.weights[i].items():
+                w.set(new_weights[i][cname])
+
     def create_constraints(self):
         x = self.xrange
         relative_constraints = {}
@@ -174,34 +338,16 @@ class MixtureModel1S(MixtureModelBase):
             relative_constraints['IC_I1'].getDistChecker('left'),
         )
 
-
     def fit(self, X):
         prev_ll = -np.inf
         X = X[X[:, 1] != 0]
 
         n, d = X.shape
 
-        self.init_range(X)
+        print(f'model initialized {self.initialized}')
+        if not self.initialized:
+            self.init_model(X)
 
-        xmax = np.max(X)
-        xmin = np.min(X)
-        self.n_xsamples = 200
-        xstep = (xmax - xmin) / self.n_xsamples
-        # x = np.arange(xmin, xmax + self.plotstep, self.plotstep)
-        x = np.arange(xmin, xmax + xstep, xstep)
-        sigma = np.sqrt(X[:, 0].var())
-
-        for i in range(len(self.comps)):
-            for j, (cname, _) in enumerate(self.comps[i].items()):
-                # mu = xmax - (xmax - xmin) / len(self.comps[i]) * (1 / 2 + j)
-                mu = X[:, 0].mean() + 1 * sigma - j * 1 * sigma
-                # self.comps[i][cname] = SN()
-                self.weights[i][cname] = 1 / len(self.comps[i])
-                self.comps[i][cname].mu = mu
-                self.comps[i][cname].sigma = sigma / 3
-                self.comps[i][cname].calc_alt_params()
-
-        self.create_constraints()
         self.starting_pos = self.frozen()
 
         self.ll = self.log_likelihood(X)
@@ -219,7 +365,8 @@ class MixtureModel1S(MixtureModelBase):
 
             # sum_rs = []
             new_weights = self.solve_weights([np.sum(r, 0) for r in rs], n)
-            self.weights = new_weights
+            # self.weights = new_weights
+            self.update_weights(new_weights)
 
             d = defaultdict(lambda: [None, [], []])
             for i, r in enumerate(rs):
@@ -231,7 +378,6 @@ class MixtureModel1S(MixtureModelBase):
                     # self.comps[i][cname].iterfit(X[:, i], r[:, j])
 
             for cname, (cdist, xs, rs) in d.items():
-
                 # new_dist = cdist.iterfit(np.array(xs), np.array(rs), cons)
                 # cdist.iterfit(np.array(xs), np.array(rs))
                 cdist.iterfit(np.array(xs), np.array(rs), self.comp_constraints[cname])

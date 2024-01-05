@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 from param_binary_search import *
 from normal_gpu import Normal
-# from myutils import *
+from myutils import *
 import matplotlib.pyplot as plt
 from plotting import *
 
@@ -76,6 +76,11 @@ class SkewNormal:
                 + w * new_sn.Delta ** 2)
                               ) / np.sum(weights)
         new_sn.from_alt_params()
+        if new_sn.alpha < 0 and self.alpha > 0:
+            print('alpha flipped, weighted sample skewness = ', weighted_skewness(X, weights))
+            print(f'old alpha: {self.alpha}, new alpha: {new_sn.alpha}')
+            pass
+            # assert False
         if dist_cons:
             sigma_test_func = dist_cons.get_param_checker('sigma')
             new_sn.sigma = param_binary_search(self.sigma, new_sn.sigma, sigma_test_func)
@@ -108,9 +113,9 @@ class SkewNormal:
         return r
 
     def pdf(self, x):
-        # return stats.skewnorm.pdf(x, self.alpha, self.mu, self.sigma)
-        r = 2 * Normal(self.mu, self.sigma).pdf(x) * Normal().cdf(self.alpha * (x - self.mu) / self.sigma)
-        return r
+        return stats.skewnorm.pdf(x, self.alpha, self.mu, self.sigma)
+        # r = 2 * Normal(self.mu, self.sigma).pdf(x) * Normal().cdf(self.alpha * (x - self.mu) / self.sigma)
+        # return r
 
     def __repr__(self):
         return f'<SkewNormal{f" {self.name}" if self.name else ""}' \
