@@ -120,7 +120,14 @@ class MixtureModelBase:
         else:
             axs = fig.axes
             axs.pop().remove()
+
+        """need to rescale the weights for second scores"""
         for i in range(len(frozen_model.comps)):
+            if i == 0:
+                reweight_scale = 1
+            else:
+                reweight_scale = 1 / (1 - frozen_model.weights[i]['NA'].get())
+
             # print(f'plotting score {i + 1}')
             # xi = X[:, i]
             # ax = fig.subplot(nsub, 1, i + 1, label=f's{i + 1}')
@@ -132,12 +139,16 @@ class MixtureModelBase:
             # ymax = cnts.max()
             for j, (cname, cdist) in enumerate(frozen_model.comps[i].items()):
                 # ax.plot(cdist.pdf(x), linestyle='--')
-                yj = frozen_model.weights[i][cname] * cdist.pdf(x)
+                if cname == 'NA':
+                    continue
+                yj = frozen_model.weights[i][cname] * reweight_scale * cdist.pdf(x)
                 yi += yj
                 ax.plot(x, yj, c='C%d' % idmap[cname])
                 legends.append(cname)
             ymax = yi.max()
             for j, (cname, cdist) in enumerate(frozen_model.comps[i].items()):
+                if cname == 'NA':
+                    continue
                 scdist = frozen_model.starting_pos.comps[i][cname]
                 # print(f'plotting component {cname}')
                 str_params = f'{frozen_model.weights[i][cname]:.2f}' \
@@ -149,7 +160,14 @@ class MixtureModelBase:
             ax.plot(x, yi, c='C%d' % idmap['mixture'])
             legends.append(f'mixture{i + 1}')
             # print('draw hist')
-            ax.hist(X[:, i], bins=bins, density=True, facecolor='w', ec='k', lw=1)
+            """remove zeros when hist second scores"""
+            if i == 0:
+                ax.hist(X[:, i], bins=bins, density=True, facecolor='w', ec='k', lw=1)
+            else:
+                nonzero = X[:, i]
+                nonzero = nonzero[nonzero != 0]
+                ax.hist(nonzero, bins=bins, density=True, facecolor='w', ec='k', lw=1)
+
             # fig.bars()
             # h = info.hist[i]
             # fig.bar(h[1][:-1], h[0], facecolor='none', edgecolor='k')
