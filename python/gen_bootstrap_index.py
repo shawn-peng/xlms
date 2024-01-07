@@ -26,7 +26,8 @@ NUM_BOOTSTRAP = 50
 
 
 def gen_bootstrap_index(dataset_name):
-    dataset = XLMS_Dataset(dataset_name)
+    # dataset = XLMS_Dataset(dataset_name)
+    dataset = XLMS_Dataset(dataset_name, nodup=True)
     bs_indices = []
     for i in range(NUM_BOOTSTRAP):
         rind = gen_bootstrap_index_i(dataset, rseed=i)

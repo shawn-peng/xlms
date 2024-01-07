@@ -332,6 +332,7 @@ def run_dataset(dataset_name):
         os.makedirs(res_dir)
     tda_info = json.load(open(f'../results/info/{dataset_name}.json'))
     dataset = XLMS_Dataset(dataset_name, nodup=True)
+    print(f'removing {(dataset.mat[1, :] == 0).sum()} data points with only one score')
     dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
 
     n = dataset.mat.shape[1]
