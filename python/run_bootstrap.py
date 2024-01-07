@@ -289,7 +289,8 @@ def run_bootstrap_i(dataset_name, bootstrap_i):
     """ Bootstrap for a dataset with the same configuration
 
     """
-    dataset = XLMS_Dataset(dataset_to_run)
+    # dataset = XLMS_Dataset(dataset_to_run)
+    dataset = XLMS_Dataset(dataset_name, nodup=True)
 
     bs_indices = pickle.load(open(f'{bootstrap_dir}/index.pickle', 'rb'))
 

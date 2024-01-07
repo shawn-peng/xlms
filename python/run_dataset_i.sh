@@ -37,7 +37,10 @@ part=$3
 mu_strategy=$4
 
 # python run.py -c $conf -d $dataset -q $part --suffix _${mu_strategy} --mu_strategy ${mu_strategy} -r 40 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
-python run.py -c $conf -d $dataset -q $part --suffix _${mu_strategy}_200 --mu_strategy ${mu_strategy} -r 200 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
+# python run.py -c $conf -d $dataset -q $part --suffix _${mu_strategy}_thres-9 --mu_strategy ${mu_strategy} -t 1e-9 -r 40 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
+python run.py -c $conf -d $dataset -q $part --suffix _${mu_strategy}_thres-10 --mu_strategy ${mu_strategy} -t 1e-10 -r 40 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
+# python run.py -c $conf -d $dataset -q $part --suffix _${mu_strategy}_200 --mu_strategy ${mu_strategy} -r 200 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
+# python run.py -c $conf -d $dataset -q $part --suffix _${mu_strategy}_100 --mu_strategy ${mu_strategy} -r 100 -j 10 -p -i # &> ../log/${conf}_${dataset}.log
 
 # tail -f ../log/${conf}_${dataset}.log
 

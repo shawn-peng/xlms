@@ -335,7 +335,7 @@ def run_dataset(dataset_name):
     tda_info = json.load(open(f'../results/info/{dataset_name}.json'))
     dataset = XLMS_Dataset(dataset_name, nodup=True)
     print(f'original size {(dataset.mat).shape}')
-    print(f'removing {(dataset.mat[1, :] == 0).sum()} data points with only one score')
+    print(f'{(dataset.mat[1, :] == 0).sum()} data points with only one score')
 
     """ In mixed 1s 2s, we keep data points with only one score """
     # dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
