@@ -204,25 +204,40 @@ class MixtureModelBase:
         plt.pause(0.01)
 
     def log_likelihood(self, X):
-        ll = np.log(self.likelihood(X))
-        ll[np.isinf(ll)] = ll[~np.isinf(ll)].min()
-        return ll.mean()
+        # ll = np.log(self.likelihood(X))
+        # ll = list(map(np.log, self.likelihood(X)))
+        # for lli in ll:
+        #     lli[np.isinf(lli)] = lli[~np.isinf(lli)].min()
+        # return np.mean(list(map(lambda x: x.mean(), ll)))
+        return np.mean(self.sep_log_likelihood(X))
 
     def sep_log_likelihood(self, X):
-        ll = np.log(self.likelihood(X))
-        ll[np.isinf(ll)] = ll[~np.isinf(ll)].min()
-        return ll.mean(1)
+        ll = list(map(np.log, self.likelihood(X)))
+        for lli in ll:
+            lli[np.isinf(lli)] = lli[~np.isinf(lli)].min()
+        return list(map(lambda x: x.mean(), ll))
 
     def likelihood(self, X):
         X = np.array(X)
         n, d = X.shape
         assert d == 2
-        pj = list(map(lambda c: np.zeros((n, len(c))), self.comps))
+        # pj = list(map(lambda c: np.zeros((n, len(c))), self.comps))
+        pj = []
         p = []
         for i in range(len(self.comps)):
             ws = self.weights[i]
+            if i == 0:
+                reweight_scale = 1
+                nonzero = X[:, i]
+            else:
+                reweight_scale = 1 / (1 - self.weights[i]['NA'].get())
+                nonzero = X[:, i][X[:, i] != -10000]
+            pj.append(np.zeros((len(nonzero), len(self.comps[i]))))
             for j, (cname, cdist) in enumerate(self.comps[i].items()):
-                pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
+                # pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
+                if cname == 'NA':
+                    continue
+                pj[i][:, j] = ws[cname] * reweight_scale * cdist.pdf(nonzero)
             p0 = np.sum(pj[i], 1)
             p.append(p0)
         return p
