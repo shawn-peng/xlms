@@ -93,8 +93,8 @@ def extract_idxml_smat(tab: pd.DataFrame, score_column='OpenPepXL:score', noisot
             continue
         pep = (row['sequence'], row['sequence_beta'])
         if pep in spec_peptides[specid]:
-            print('skipping same peptides with different xl_pos')
-            print(pep)
+            # print('skipping same peptides with different xl_pos')
+            # print(pep)
             continue
         if not keep_diff_xl_pos:
             spec_peptides[specid].add(pep)

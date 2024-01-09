@@ -107,7 +107,7 @@ class MixtureModel(MixtureModelBase):
                 if cname not in self.all_comps:
                     if cname == 'NA':
                         """use a fixed dummy dirac delta distribution"""
-                        self.all_comps[cname] = FN(0, 1e-8)
+                        self.all_comps[cname] = FN(-10000, 1e-8)
                     else:
                         self.all_comps[cname] = SN(skew_dirs[cname], name=cname)
 
@@ -461,7 +461,7 @@ class MixtureModel(MixtureModelBase):
             except Exception as e:
                 # if e is not ZeroDivisionError:
                 #     tb.print_exc()
-                tb.print_exc()
+                # tb.print_exc()
                 return
 
             solutions = [s for s in solutions if all(map(lambda x: x.is_real, s.values()))]
