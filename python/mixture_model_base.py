@@ -71,7 +71,10 @@ class MixtureModelBase:
         self.xrange = np.arange(xmin, xmax + xstep, xstep)
 
         xmax = np.max(X)
-        xmin = -50
+        if 'D1810' in self.title:
+            xmin = -100
+        else:
+            xmin = -50
         # xmin = x.min()
         # xmax = x.max()
         self.plotting_xrange = np.arange(xmin, xmax + self.plotstep, self.plotstep)
@@ -104,7 +107,10 @@ class MixtureModelBase:
         # print('frozen_model starting_pos', frozen_model.starting_pos)
         # frozen_model = AttrObj(frozen_model)
         xmax = np.max(X)
-        xmin = -50
+        if 'D1810' in frozen_model.title:
+            xmin = -100
+        else:
+            xmin = -50
         # xmin = x.min()
         # xmax = x.max()
         # x = np.arange(xmin, xmax + frozen_model.plotstep, frozen_model.plotstep)
