@@ -107,7 +107,7 @@ class MixtureModel(MixtureModelBase):
                 if cname not in self.all_comps:
                     if cname == 'NA':
                         """use a fixed dummy dirac delta distribution"""
-                        self.all_comps[cname] = FN(-10000, 1e-8)
+                        self.all_comps[cname] = FN(np.nan, 1e-8)
                     else:
                         self.all_comps[cname] = SN(skew_dirs[cname], name=cname)
 
@@ -194,9 +194,11 @@ class MixtureModel(MixtureModelBase):
                 ind[(i, cname)] = len(ind)
                 cnames.append(cname)
         g = np.zeros([len(ind), len(ind)])
-        eqs = [0] * len(ind)
+        eqs = [0] * (len(ind) - 1)
         for i, cname in ind.keys():
             # eqs[ind[(i, cname)]] = sympy.parse_expr(f'R{i + 1}{cname} / w{i + 1}{cname} + lambda{i + 1}')
+            if cname == 'NA':
+                continue
             eqs[ind[(i, cname)]] = (self.syms[f'R{i + 1}{cname}'] / self.syms[f'w{i + 1}{cname}']
                                     + self.syms[f'lambda{i + 1}'])
         for cs in zip(*self.join_comps):
@@ -279,8 +281,12 @@ class MixtureModel(MixtureModelBase):
         for i in range(len(self.comps)):
             ws = self.weights[i]
             for j, (cname, cdist) in enumerate(self.comps[i].items()):
-                pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
-                truncate_zero(pj[i][:, j])
+                if cname == 'NA':
+                    pj[i][:, j] = np.isnan(X[:, i])
+                else:
+                    pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
+                    truncate_zero(pj[i][:, j])
+                    pj[i][np.isnan(X[:, i]), j] = 0
             p0 = np.sum(pj[i], 1).reshape((-1, 1))
             truncate_zero(p0)
             # assert not np.any(p0)
@@ -519,7 +525,7 @@ class MixtureModel(MixtureModelBase):
     def putdata(self, X):
         X = X[X[:, 1] != 0].astype(np.float64)
         self.X = X
-        xmax = np.max(X)
+        xmax = np.nanmax(X)
         xmin = -100
         self.xplot = np.arange(xmin, xmax + self.plotstep, self.plotstep)
         bins = np.arange(xmin, xmax + self.binwidth, self.binwidth)
@@ -639,8 +645,8 @@ class MixtureModel(MixtureModelBase):
 
         sigma = np.sqrt(X[:, 0].var())
         mu = X[:, 0].mean()
-        xmin = X.min()
-        xmax = X.max()
+        xmin = np.nanmin(X)
+        xmax = np.nanmax(X)
         xmin = -50.0
         if self.init_strategy == 'random':
             # seed = int(time.time()) + self.seedoff
@@ -834,7 +840,7 @@ class MixtureModel(MixtureModelBase):
     def fit(self, X):
         prev_ll = -np.inf
         # X = X[X[:, 1] != 0].astype(np.float64)
-        # xmax = np.max(X)
+        # xmax = np.nanmax(X)
         # xmin = -100
         # xplot = np.arange(xmin, xmax + self.plotstep, self.plotstep)
         # bins = np.arange(xmin, xmax + self.binwidth, self.binwidth)
@@ -902,13 +908,15 @@ class MixtureModel(MixtureModelBase):
             for i, r in enumerate(rs):
                 for j, (cname, cdist) in enumerate(self.comps[i].items()):
                     # self.weights[i][cname] = sum_rs[i][j] / n
+                    missing = np.isnan(X[:, i])
                     d[cname][0] = cdist
-                    d[cname][1].append(X[:, i])
-                    d[cname][2].append(r[:, j])
+                    d[cname][1].append(X[~missing, i])
+                    d[cname][2].append(r[~missing, j])
                     # self.comps[i][cname].iterfit(X[:, i], r[:, j])
 
             for cname, (cdist, xs, rs) in d.items():
-                cdist.iterfit(np.array(xs), np.array(rs), self.comp_constraints[cname])
+                # cdist.iterfit(np.array(xs), np.array(rs), self.comp_constraints[cname])
+                cdist.iterfit(np.hstack(xs), np.hstack(rs), self.comp_constraints[cname])
 
             # ll = self.log_likelihood(X)
             self.ll = self.log_likelihood(X)

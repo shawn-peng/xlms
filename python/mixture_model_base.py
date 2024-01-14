@@ -63,14 +63,14 @@ class MixtureModelBase:
         pass
 
     def init_range(self, X):
-        xmax = np.max(X)
-        xmin = np.min(X)
+        xmax = np.nanmax(X)
+        xmin = np.nanmin(X)
         self.n_xsamples = 200
         xstep = (xmax - xmin) / self.n_xsamples
         # x = np.arange(xmin, xmax + self.plotstep, self.plotstep)
         self.xrange = np.arange(xmin, xmax + xstep, xstep)
 
-        xmax = np.max(X)
+        xmax = np.nanmax(X)
         if 'D1810' in self.title:
             xmin = -100
         else:
@@ -106,7 +106,7 @@ class MixtureModelBase:
         # print('frozen_model', frozen_model)
         # print('frozen_model starting_pos', frozen_model.starting_pos)
         # frozen_model = AttrObj(frozen_model)
-        xmax = np.max(X)
+        xmax = np.nanmax(X)
         if 'D1810' in frozen_model.title:
             xmin = -100
         else:
@@ -237,7 +237,7 @@ class MixtureModelBase:
                 nonzero = X[:, i]
             else:
                 reweight_scale = 1 / (1 - self.weights[i]['NA'].get())
-                nonzero = X[:, i][X[:, i] != -10000]
+                nonzero = X[:, i][~np.isnan(X[:, i])]
             pj.append(np.zeros((len(nonzero), len(self.comps[i]))))
             for j, (cname, cdist) in enumerate(self.comps[i].items()):
                 # pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
