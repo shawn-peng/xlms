@@ -53,7 +53,7 @@ class MixtureModelBase:
             **{
                 k: deepcopy(self.__getattribute__(k))
                 for k in ['binwidth', 'plotstep', 'n_samples', 'weights', 'comps', 'all_comps', 'starting_pos',
-                          'xrange', 'plotting_xrange',
+                          'xrange', 'plotting_xrange', 'seedoff',
                           # 'fdr_curve',
                           'fdr_thres', 'title']
             }})

@@ -252,7 +252,7 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     plt.axvline(tda_fdr1, linestyle='--')
     plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
-        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f}"
+        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} id={modelid} ll={ll:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}"
         f" {'Y' if model.cons_satisfied else 'N'}")
     plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
@@ -296,7 +296,7 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
         plt.axvline(tda_fdr1, linestyle='--')
         plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
         plt.title(
-            f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} ll={model['ll']:.05f}"
+            f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} id={model['seedoff']} ll={model['ll']:.05f}"
             f" constraints={get_cons_str(settings[config]['constraints'])}"
             f" {'Y' if model['cons_sat'] else 'N'}")
         plt.savefig(f'{rand_dir}/{fname}')
@@ -398,7 +398,7 @@ def run_dataset(dataset_name):
     plt.axvline(tda_fdr1, linestyle='--')
     plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
-        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {best['sls']} ll={best['ll']:.05f}"
+        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {best['sls']} id={best['seedoff']} ll={best['ll']:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}"
         f" {'Y' if best['cons_sat'] else 'N'}")
     plt.savefig(f'{res_dir}/best.png')
