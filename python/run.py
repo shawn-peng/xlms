@@ -123,6 +123,7 @@ parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
 parser.add_argument('-i', '--inner_parallel', action='store_true', default=False)
 parser.add_argument('--show_plotting', action='store_true', default=show_plotting)
+parser.add_argument('--clear_results', action='store_true', default=True)
 parser.add_argument('--mu_strategy', default=mu_strategy)
 
 args = parser.parse_args()
@@ -143,6 +144,7 @@ part = args.part
 random_i = args.random_i
 show_plotting = args.show_plotting
 mu_strategy = args.mu_strategy
+clear_results = args.clear_results
 
 map_cons_str = {
     'weights':      'w',
@@ -329,6 +331,10 @@ def run_dataset(dataset_name):
 
     # res_dir = f'../figures_python_1S_{config}/{dataset_name}/'
     res_dir = f'../{base_figure_dir}/{dataset_name}/'
+
+    if clear_results:
+        shutil.rmtree(res_dir)
+
     # res_dir = f'../figures_python_order_stats_skewnorm_IC_I/{dataset_name}/'
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
