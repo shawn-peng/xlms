@@ -77,7 +77,6 @@ class MixtureModel(MixtureModelBase):
         self.initialized = initialized
         self.event_notify_func = event_notify_func
         self.ic2_comp = ic2_comp
-        seedoff = 13
         self.seedoff = seedoff
 
         """To do a mixed 1S 2S model, we add 3 joint component"""
