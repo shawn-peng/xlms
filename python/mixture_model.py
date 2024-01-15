@@ -77,6 +77,7 @@ class MixtureModel(MixtureModelBase):
         self.initialized = initialized
         self.event_notify_func = event_notify_func
         self.ic2_comp = ic2_comp
+        seedoff = 13
         self.seedoff = seedoff
 
         """To do a mixed 1S 2S model, we add 3 joint component"""
@@ -361,6 +362,9 @@ class MixtureModel(MixtureModelBase):
         def gen_sys_eq(active_cnames):
             # print(active_cnames)
             newsys, newvals = deepcopy(sys_eqs), deepcopy(vals)
+            w2NA = self.syms['w2NA']
+            newsys.append(w2NA - ws[w2NA])
+            # newvals[self.syms['w2NA']] = ws[w2NA]
             # for cname in violated_cons:
             for cname in self.comps[1].keys():
                 if cname == 'NA':
@@ -380,15 +384,21 @@ class MixtureModel(MixtureModelBase):
         def get_var_syms_n_guess():
             syms = []
             guess = []
+
+            """weight variables"""
             for i in range(self.n_samples):
                 for cname in self.comps[i].keys():
+                    # if cname == 'NA':
+                    #     continue
                     syms.append(self.syms[f'w{i + 1}{cname}'])
                     guess.append(res[i][cname])
 
+            """lambda variables"""
             for i in range(self.n_samples):
                 syms.append(self.syms[f'lambda{i + 1}'])
                 guess.append(n)
 
+            """eta variables"""
             for cname in self.comps[1].keys():
                 if cname == 'NA':
                     continue
