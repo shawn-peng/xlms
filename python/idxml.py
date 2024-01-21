@@ -5,6 +5,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import traceback as tb
 
 
 def get_user_param_value(param):
@@ -35,6 +36,7 @@ class XMLNode:
     def __getattr__(self, attr):
         if attr in self.d:
             return self.d[attr]
+        print(self.d)
         return super().__getattr__(attr)
 
     def __getitem__(self, item):
@@ -76,21 +78,29 @@ class XLMS_res:
             alpha = XMLNode(psm_node.find('PeptideHit[1]'))
             # row['alpha_sequence'] = alpha.sequence
             psm = XMLNode(psm_node)
+            # print(psm.spectrum_reference)
+            if 'xl_type' not in psm.d:
+                print(psm.spectrum_reference, f'wrong format in file {self.filename}, skipping')
+                continue
+                # assert False
             row.update(psm.d)
             for k, v in alpha.d.items():
                 if k in row:
                     assert v == row[k]
             row.update(alpha.d)
-            if psm.xl_type == 'cross-link':
-                beta = XMLNode(psm_node.find('PeptideHit[2]'))
-            elif psm.xl_type == 'mono-link':
-                pass
-            elif psm.xl_type == 'loop-link':
-                pass
-            else:
-                print(psm.xl_type)
-                assert False
-                break
+            try:
+                if psm.xl_type == 'cross-link':
+                    beta = XMLNode(psm_node.find('PeptideHit[2]'))
+                elif psm.xl_type == 'mono-link':
+                    pass
+                elif psm.xl_type == 'loop-link':
+                    pass
+                else:
+                    print(psm.xl_type)
+                    assert False
+                    break
+            except e:
+                tb.print_exc()
             res.append(row)
         return pd.DataFrame(res)
 
