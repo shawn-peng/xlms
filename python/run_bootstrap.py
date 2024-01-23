@@ -254,11 +254,14 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
                                       [(sls, dataset_name, dataset, tda_info, rand_dir, i) for i in range(n)])
         else:
             models = list(starmap(run_model, [(sls, dataset_name, dataset, tda_info, rand_dir, i) for i in range(n)]))
+        print('sorting models')
         models = list(sorted(models, key=lambda x: x['ll'], reverse=True))
         if not os.path.exists(rand_dir):
             os.makedirs(rand_dir)
+        print('dumping models')
         pickle.dump(models, open(models_pickle, 'wb'))
 
+    print('plotting models')
     fig = plt.figure(figsize=(16, 9))
     for i, model in enumerate(models):
         fname = f'rank_{i + 1}.png'
@@ -277,6 +280,7 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
     shutil.copyfile(f'{rand_dir}/rank_1.png', res_dir + '_'.join(map(str, sls.values())) + '.png')
 
     """ Plot ll hist """
+    print('plotting ll hist')
     lls = [model['ll'] for model in models]
     plt.figure()
     plt.hist(lls)
