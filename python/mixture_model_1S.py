@@ -420,5 +420,7 @@ class MixtureModel1S(MixtureModelBase):
                 prev_t = time.time()
 
         self.slls = self.sep_log_likelihood(X)
+        self.log('plotting final fit')
         self.plot(X, self.lls, self.slls)
+        self.log('finished')
         return self.ll, self.lls
