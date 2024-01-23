@@ -360,6 +360,7 @@ def run_bootstrap_i(dataset_name, bootstrap_i):
 
 
 if __name__ == '__main__':
+    __spec__ = None
     run_bootstrap_i(dataset_to_run, bootstrap_i)
 
 
