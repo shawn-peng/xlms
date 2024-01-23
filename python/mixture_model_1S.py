@@ -92,6 +92,21 @@ class MixtureModel1S(MixtureModelBase):
     def log(self, *args):
         print(f'{self.title} id {self.seedoff}:', *args)
 
+    def from_frozen(self, frozen_model, X):
+        self.init_range(X)
+        self.all_comps = deepcopy(frozen_model.all_comps)
+        for i in range(self.n_samples):
+            for j, cname in enumerate(self.comps[i].keys()):
+                if cname == 'NA':
+                    continue
+                self.comps[i][cname] = self.all_comps[cname]
+        self.weights = deepcopy(frozen_model.weights)
+        self.create_constraints()
+        self.starting_pos = frozen_model.starting_pos
+        self.initialized = True
+
+        # self.plot(X, [], self.sep_log_likelihood(X))
+
     def rand_sigmas(self, sigma, slow=0.5, shigh=1.0):
         sigmas = {}
         for cname, cdist in self.all_comps.items():
@@ -340,7 +355,6 @@ class MixtureModel1S(MixtureModelBase):
 
     def fit(self, X):
         prev_ll = -np.inf
-        X = X[X[:, 1] != 0]
 
         n, d = X.shape
 
