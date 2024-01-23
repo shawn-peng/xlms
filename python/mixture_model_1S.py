@@ -361,6 +361,7 @@ class MixtureModel1S(MixtureModelBase):
         prev_t = time.time()
         while abs(self.ll - prev_ll) > self.tolerance:
             prev_ll = self.ll
+
             rs = self.pred(X)
 
             # sum_rs = []
@@ -391,14 +392,16 @@ class MixtureModel1S(MixtureModelBase):
             self.slls = self.sep_log_likelihood(X)
             meter = TimeMeter()
             cur_t = time.time()
-            if self.show_plotting and cur_t - prev_t >= self.plot_interval:
-                # thread = threading.Thread(target=lambda : self.plot(X, self.lls, self.slls))
-                # thread = threading.Thread(target=update_fig)
-                # thread.start()
-                print('plotting...')
-                self.plot(X, self.lls, self.slls)
-                print('|', meter.read())
-                print('plot finished')
+            if cur_t - prev_t >= self.plot_interval:
+                self.log(f'{len(self.lls)} iterations')
+                if self.show_plotting:
+                    # thread = threading.Thread(target=lambda : self.plot(X, self.lls, self.slls))
+                    # thread = threading.Thread(target=update_fig)
+                    # thread.start()
+                    print('plotting...')
+                    self.plot(X, self.lls, self.slls)
+                    print('|', meter.read())
+                    print('plot finished')
 
                 prev_t = time.time()
 
