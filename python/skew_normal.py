@@ -61,6 +61,8 @@ class SkewNormal:
         # v = stats.truncnorm.moment(1, 0, np.Inf, tn_mu, tn_sigma)
         v, w = trunc_norm_moments(tn_mu, tn_sigma)
         # new_sn.mu = np.sum(weights * (X - v * self.Delta)) / np.sum(weights)
+        if np.sum(weights) == 0:
+            weights = np.ones_like(weights)
         mu = np.sum(weights * (X - v * self.Delta)) / np.sum(weights)
         if dist_cons:
             mu_test_func = dist_cons.get_param_checker('mu')
