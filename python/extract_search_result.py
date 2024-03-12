@@ -16,6 +16,10 @@ from plot_search_result import plot_result
 
 info_dir = './results/info/'
 
+def register_info_dir(d):
+    global info_dir
+    info_dir = d
+
 
 def extract_res(name, suffix=''):
     data_tab = load_idxmls(f'{name}/*.idXML', 'results/openpepxllf/knime4.6/')
@@ -179,8 +183,8 @@ def extract_TDA_info(data_tab, output_file):
                 qval = (ndecoy - 2 * ndd) / ntarget
             qvals[qstart:i] = qval
             qstart = i
-            if qval >= 0.01 and fdr_thres == 0:
-                fdr_thres = data_tab['OpenPepXL:score'].iloc[i]
+            # if qval >= 0.01 and fdr_thres == 0:
+            #     fdr_thres = data_tab['OpenPepXL:score'].iloc[i]
             ndecoy += 1
         else:
             ntarget += 1
@@ -200,6 +204,19 @@ def extract_TDA_info(data_tab, output_file):
         qval = (ndecoy - 2 * ndd) / ntarget
     qvals[qstart:i + 1] = qval
     print(i)
+    
+    new_q = 1
+    i = -1
+    for x in reversed(qvals):
+        new_q = min(x, new_q)
+        qvals[i] = new_q
+        i -= 1
+    
+    for i, x in enumerate(qvals):
+        if x >= 0.01:
+            fdr_thres = data_tab['OpenPepXL:score'].iloc[i]
+            break
+    
     curve_fdr = list(qvals)
 
     plt.figure()
@@ -238,7 +255,7 @@ def extract_TDA_info(data_tab, output_file):
 
 def extract_TDA_info_for_dataset(name):
     info_dir = './results/info/'
-    data_tab = load_res(name)
+    data_tab = load_decoy_res(name)
     # print(data_tab)
 
     if not os.path.exists(info_dir):
