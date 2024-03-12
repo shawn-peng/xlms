@@ -71,7 +71,10 @@ class MixtureModelBase:
         self.xrange = np.arange(xmin, xmax + xstep, xstep)
 
         xmax = np.max(X)
-        xmin = -50
+        if 'D1810' in self.title:
+            xmin = -100
+        else:
+            xmin = -50
         # xmin = x.min()
         # xmax = x.max()
         self.plotting_xrange = np.arange(xmin, xmax + self.plotstep, self.plotstep)
@@ -104,7 +107,10 @@ class MixtureModelBase:
         # print('frozen_model starting_pos', frozen_model.starting_pos)
         # frozen_model = AttrObj(frozen_model)
         xmax = np.max(X)
-        xmin = -50
+        if 'D1810' in frozen_model.title:
+            xmin = -100
+        else:
+            xmin = -50
         # xmin = x.min()
         # xmax = x.max()
         # x = np.arange(xmin, xmax + frozen_model.plotstep, frozen_model.plotstep)
@@ -120,7 +126,14 @@ class MixtureModelBase:
         else:
             axs = fig.axes
             axs.pop().remove()
+
+        """need to rescale the weights for second scores"""
         for i in range(len(frozen_model.comps)):
+            if i == 0:
+                reweight_scale = 1
+            else:
+                reweight_scale = 1 / (1 - frozen_model.weights[i]['NA'].get())
+
             # print(f'plotting score {i + 1}')
             # xi = X[:, i]
             # ax = fig.subplot(nsub, 1, i + 1, label=f's{i + 1}')
@@ -132,12 +145,16 @@ class MixtureModelBase:
             # ymax = cnts.max()
             for j, (cname, cdist) in enumerate(frozen_model.comps[i].items()):
                 # ax.plot(cdist.pdf(x), linestyle='--')
-                yj = frozen_model.weights[i][cname] * cdist.pdf(x)
+                if cname == 'NA':
+                    continue
+                yj = frozen_model.weights[i][cname] * reweight_scale * cdist.pdf(x)
                 yi += yj
                 ax.plot(x, yj, c='C%d' % idmap[cname])
                 legends.append(cname)
             ymax = yi.max()
             for j, (cname, cdist) in enumerate(frozen_model.comps[i].items()):
+                if cname == 'NA':
+                    continue
                 scdist = frozen_model.starting_pos.comps[i][cname]
                 # print(f'plotting component {cname}')
                 str_params = f'{frozen_model.weights[i][cname]:.2f}' \
@@ -149,7 +166,14 @@ class MixtureModelBase:
             ax.plot(x, yi, c='C%d' % idmap['mixture'])
             legends.append(f'mixture{i + 1}')
             # print('draw hist')
-            ax.hist(X[:, i], bins=bins, density=True, facecolor='w', ec='k', lw=1)
+            """remove zeros when hist second scores"""
+            if i == 0:
+                ax.hist(X[:, i], bins=bins, density=True, facecolor='w', ec='k', lw=1)
+            else:
+                nonzero = X[:, i]
+                nonzero = nonzero[nonzero != 0]
+                ax.hist(nonzero, bins=bins, density=True, facecolor='w', ec='k', lw=1)
+
             # fig.bars()
             # h = info.hist[i]
             # fig.bar(h[1][:-1], h[0], facecolor='none', edgecolor='k')
@@ -186,25 +210,40 @@ class MixtureModelBase:
         plt.pause(0.01)
 
     def log_likelihood(self, X):
-        ll = np.log(self.likelihood(X))
-        ll[np.isinf(ll)] = ll[~np.isinf(ll)].min()
-        return ll.mean()
+        # ll = np.log(self.likelihood(X))
+        # ll = list(map(np.log, self.likelihood(X)))
+        # for lli in ll:
+        #     lli[np.isinf(lli)] = lli[~np.isinf(lli)].min()
+        # return np.mean(list(map(lambda x: x.mean(), ll)))
+        return np.mean(self.sep_log_likelihood(X))
 
     def sep_log_likelihood(self, X):
-        ll = np.log(self.likelihood(X))
-        ll[np.isinf(ll)] = ll[~np.isinf(ll)].min()
-        return ll.mean(1)
+        ll = list(map(np.log, self.likelihood(X)))
+        for lli in ll:
+            lli[np.isinf(lli)] = lli[~np.isinf(lli)].min()
+        return list(map(lambda x: x.mean(), ll))
 
     def likelihood(self, X):
         X = np.array(X)
         n, d = X.shape
         assert d == 2
-        pj = list(map(lambda c: np.zeros((n, len(c))), self.comps))
+        # pj = list(map(lambda c: np.zeros((n, len(c))), self.comps))
+        pj = []
         p = []
         for i in range(len(self.comps)):
             ws = self.weights[i]
+            if i == 0:
+                reweight_scale = 1
+                nonzero = X[:, i]
+            else:
+                reweight_scale = 1 / (1 - self.weights[i]['NA'].get())
+                nonzero = X[:, i][X[:, i] != -10000]
+            pj.append(np.zeros((len(nonzero), len(self.comps[i]))))
             for j, (cname, cdist) in enumerate(self.comps[i].items()):
-                pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
+                # pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
+                if cname == 'NA':
+                    continue
+                pj[i][:, j] = ws[cname] * reweight_scale * cdist.pdf(nonzero)
             p0 = np.sum(pj[i], 1)
             p.append(p0)
         return p

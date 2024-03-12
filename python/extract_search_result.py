@@ -105,7 +105,7 @@ def extract_idxml_smat(tab: pd.DataFrame, score_column='OpenPepXL:score', noisot
         spec_matches[specid].append(row[score_column])
     for l in spec_matches.values():
         if len(l) == 1:
-            l.append(0)
+            l.append(-10000)
     return pd.DataFrame(spec_matches).transpose().rename(columns={0: 's1', 1: 's2'})
 
 

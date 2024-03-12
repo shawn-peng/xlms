@@ -122,6 +122,7 @@ parser.add_argument('-t', '--tolerance', type=float, default=tolerance)
 parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
 parser.add_argument('-i', '--inner_parallel', action='store_true', default=False)
+parser.add_argument('--show_plotting', action='store_true', default=show_plotting)
 parser.add_argument('--mu_strategy', default=mu_strategy)
 
 args = parser.parse_args()
@@ -140,6 +141,7 @@ num_workers = args.jobs
 random_size = args.random_size
 part = args.part
 random_i = args.random_i
+show_plotting = args.show_plotting
 mu_strategy = args.mu_strategy
 
 map_cons_str = {
@@ -332,8 +334,11 @@ def run_dataset(dataset_name):
         os.makedirs(res_dir)
     tda_info = json.load(open(f'../results/info/{dataset_name}.json'))
     dataset = XLMS_Dataset(dataset_name, nodup=True)
-    print(f'removing {(dataset.mat[1, :] == 0).sum()} data points with only one score')
-    dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
+    print(f'original size {(dataset.mat).shape}')
+    print(f'{(dataset.mat[1, :] == 0).sum()} data points with only one score')
+
+    """ In mixed 1s 2s, we keep data points with only one score """
+    # dataset.mat = dataset.mat[:, dataset.mat[1, :] != 0]
 
     n = dataset.mat.shape[1]
     if SAMPLE_SIZE > 0:

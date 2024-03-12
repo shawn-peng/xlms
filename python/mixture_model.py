@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 # from scipy import stats
 import numpy as np
 import skew_normal as skew_normal
+import fixed_normal
 # import skew_normal_cupy as skew_normal
 import normal_gpu
 from constraints import *
@@ -23,6 +24,7 @@ from typing import *
 
 SN = skew_normal.SkewNormal
 N = normal_gpu.Normal
+FN = fixed_normal.FixedNormal
 
 
 def eval_eqs(eqs: List[str]):
@@ -32,7 +34,7 @@ def eval_eqs(eqs: List[str]):
     return list(map(eval_eq, eqs))
 
 
-comp_id = {'C': 1, 'IC': 2, 'IC2': 3, 'I1': 4, 'I2': 5}
+comp_id = {'C': 1, 'IC': 2, 'IC2': 3, 'I1': 4, 'I2': 5, 'NA': 6}
 
 
 class MixtureModel(MixtureModelBase):
@@ -76,15 +78,17 @@ class MixtureModel(MixtureModelBase):
         self.event_notify_func = event_notify_func
         self.ic2_comp = ic2_comp
         self.seedoff = seedoff
+
+        """To do a mixed 1S 2S model, we add 3 joint component"""
         if ic2_comp:
             self.join_comps = [
-                ['C', 'C', 'IC', 'IC', 'IC', 'I1', 'I1', 'I1'],
-                ['IC', 'I1', 'C', 'IC2', 'I1', 'C', 'IC', 'I2'],
+                ['C', 'C',  'IC', 'IC', 'IC', 'I1', 'I1', 'I1', 'C',  'IC', 'I1'],
+                ['IC', 'I1', 'C', 'IC2', 'I1', 'C', 'IC', 'I2', 'NA', 'NA', 'NA'],
             ]
         else:
             self.join_comps = [
-                ['C', 'C', 'IC', 'IC', 'IC', 'I1', 'I1', 'I1'],
-                ['IC', 'I1', 'C', 'IC', 'I1', 'C', 'IC', 'I1'],
+                ['C', 'C', 'IC', 'IC', 'IC', 'I1', 'I1', 'I1', 'C',  'IC', 'I1'],
+                ['IC', 'I1', 'C', 'IC', 'I1', 'C', 'IC', 'I1', 'NA', 'NA', 'NA'],
             ]
         self.n_samples = len(self.join_comps)
         self.constraints = constraints
@@ -101,7 +105,11 @@ class MixtureModel(MixtureModelBase):
         for i in range(self.n_samples):
             for cname in self.join_comps[i]:
                 if cname not in self.all_comps:
-                    self.all_comps[cname] = SN(skew_dirs[cname], name=cname)
+                    if cname == 'NA':
+                        """use a fixed dummy dirac delta distribution"""
+                        self.all_comps[cname] = FN(-10000, 1e-8)
+                    else:
+                        self.all_comps[cname] = SN(skew_dirs[cname], name=cname)
 
         self.all_comps = dict(sorted(self.all_comps.items(), key=lambda x: comp_id[x[0]]))
 
@@ -109,10 +117,13 @@ class MixtureModel(MixtureModelBase):
         #     cname: SN(skew_dirs[cname]) for cname in sorted(set(comps), key=lambda x: comp_id[x])
         # } for comps in self.join_comps]
         self.comps = [{
-            cname: self.all_comps[cname] for cname in sorted(set(comps), key=lambda x: comp_id[x])
+            # cname: None if cname == 'NA' else self.all_comps[cname]
+            cname: self.all_comps[cname]
+            for cname in sorted(set(comps), key=lambda x: comp_id[x])
         } for comps in self.join_comps]
         self.weights = [{
-            cname: DynamicParam(1) for cname in sorted(set(comps), key=lambda x: comp_id[x])
+            cname: DynamicParam(1)
+            for cname in sorted(set(comps), key=lambda x: comp_id[x])
         } for comps in self.join_comps]
         # self.weights = [
         #     NamedArray(sorted(set(comps), key=lambda x: comp_id[x]), 1)
@@ -192,8 +203,12 @@ class MixtureModel(MixtureModelBase):
             t = tuple(map(lambda c: ind[c], enumerate(cs)))
             g[t] = 1
             cname = cnames[t[1]]
+            if cname == 'NA':
+                continue
             eqs[t[0]] += self.syms[f'eta{2}{cname}']
         for cname in self.comps[1]:
+            if cname == 'NA':
+                continue
             eqs[ind[(1, cname)]] -= self.syms[f'eta{2}{cname}']
         # for i in range(self.n_samples):
         #     for cname in self.comps[i].keys():
@@ -342,7 +357,9 @@ class MixtureModel(MixtureModelBase):
             newsys, newvals = deepcopy(sys_eqs), deepcopy(vals)
             # for cname in violated_cons:
             for cname in self.comps[1].keys():
-                if cname in active_cnames:
+                if cname == 'NA':
+                    continue
+                elif cname in active_cnames:
                     newsys.append(self.weight_cons[f'2{cname}'])
                 else:
                     # newvals[self.syms[f'eta{2}{cname}']] = 0
@@ -367,6 +384,8 @@ class MixtureModel(MixtureModelBase):
                 guess.append(n)
 
             for cname in self.comps[1].keys():
+                if cname == 'NA':
+                    continue
                 syms.append(self.syms[f'eta2{cname}'])
                 guess.append(0)
             return syms, guess
@@ -442,6 +461,7 @@ class MixtureModel(MixtureModelBase):
             except Exception as e:
                 # if e is not ZeroDivisionError:
                 #     tb.print_exc()
+                # tb.print_exc()
                 return
 
             solutions = [s for s in solutions if all(map(lambda x: x.is_real, s.values()))]
@@ -510,6 +530,8 @@ class MixtureModel(MixtureModelBase):
 
     def check_constraints(self):
         for c, dist in self.all_comps.items():
+            if c == 'NA':
+                continue
             if not self.comp_constraints[c](dist, 2e-7):
                 return False
         return True
@@ -528,6 +550,8 @@ class MixtureModel(MixtureModelBase):
     def rand_alphas(self, alpha_scale):
         alphas = {}
         for cname, cdist in self.all_comps.items():
+            if cname == 'NA':
+                continue
             # alpha_scale = np.random.uniform(slow, shigh)
             alpha_scale = np.random.uniform(1 / alpha_scale, alpha_scale)
             # alpha_scale = 1.0
@@ -539,6 +563,8 @@ class MixtureModel(MixtureModelBase):
         mu = xmax
         j = 0
         for cname, cdist in self.all_comps.items():
+            if cname == 'NA':
+                continue
             mu_offset = np.random.uniform(0, 1)
             mu -= scale * mu_offset * sigma
             mus[cname] = np.float64(mu)
@@ -550,6 +576,8 @@ class MixtureModel(MixtureModelBase):
         mu = mu + 2 * sigma
         j = 0
         for cname, cdist in self.all_comps.items():
+            if cname == 'NA':
+                continue
             mu_offset = np.random.uniform(0, 1)
             mus[cname] = np.float64(mu + scale * mu_offset * sigma)
             mu -= sigma
@@ -570,17 +598,19 @@ class MixtureModel(MixtureModelBase):
         mus = {}
         j = 0
         for cname, cdist in self.all_comps.items():
+            if cname == 'NA':
+                continue
             mus[cname] = np.float64(sample[j])
             j += 1
         return mus
 
     def rand_mus_uniform(self, xmax, xmin):
-        sample = np.random.uniform(xmin, xmax, len(self.all_comps))
+        sample = np.random.uniform(xmin, xmax, len(self.all_comps) - 1)
         mus = self.mus_from_sample(sample)
         return mus
 
     def rand_mus_gaussian(self, mu, sigma):
-        sample = np.random.normal(mu, sigma, len(self.all_comps))
+        sample = np.random.normal(mu, sigma, len(self.all_comps) - 1)
         mus = self.mus_from_sample(sample)
         return mus
 
@@ -645,6 +675,8 @@ class MixtureModel(MixtureModelBase):
                 sigmas = self.rand_sigmas(sigma, 0.25, 1.0)
                 alphas = self.rand_alphas(frozen_model.all_comps['C'].alpha)
                 for cname, cdist in self.all_comps.items():
+                    if cname == 'NA':
+                        continue
                     cdist.mu = mus[cname]
                     cdist.sigma = sigmas[cname]
                     cdist.alpha = alphas[cname]
@@ -723,6 +755,7 @@ class MixtureModel(MixtureModelBase):
         # cons = None
         comp_constraints = {}
         self.comp_constraints = comp_constraints
+        comp_constraints['NA'] = ComposedChecker()
         # if cname == 'C':
         comp_constraints['C'] = ComposedChecker(
             relative_constraints['C_IC'].getDistChecker('right'),
