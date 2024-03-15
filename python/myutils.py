@@ -129,3 +129,28 @@ class DynamicParam:
     def __imul__(self, other):
         self.val *= other
         return self
+
+def gen_ufunc(nin, nout):
+    return lambda f: np.frompyfunc(f, nin, nout)
+
+def reduce(f, arr, dims):
+    r = arr
+    for dim in dims:
+        r = f.reduce(r, dim, keepdims=True)
+    return r.squeeze(dims)
+
+@gen_ufunc(2, 1)
+def max_ll(x, y):
+    if x['ll'] > y['ll']:
+        return x
+    else:
+        return y
+
+@gen_ufunc(1, 1)
+def take_model(x):
+    return x['model']
+
+@gen_ufunc(1, 1)
+def take_fdr_thres(x):
+    return x.fdr_thres
+    

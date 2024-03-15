@@ -20,9 +20,9 @@ bootstrap_i=$2
 
 echo $mu_strategy
 
-# ./run_1S_dataset_i_bootstrap_i.sh $i unweighted_pdf_mode $p $mu_strategy $bootstrap_i
+./run_1S_dataset_i_bootstrap_i.sh $i unweighted_pdf_mode $p $mu_strategy $bootstrap_i
 # ./run_dataset_i_bootstrap_i.sh $i no_constraint $p $mu_strategy $bootstrap_i
-./run_dataset_i_bootstrap_i.sh $i unweighted_pdf_mode $p $mu_strategy $bootstrap_i
+# ./run_dataset_i_bootstrap_i.sh $i unweighted_pdf_mode $p $mu_strategy $bootstrap_i
 
 
 
