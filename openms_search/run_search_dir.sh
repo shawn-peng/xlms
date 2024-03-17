@@ -20,14 +20,20 @@ LOGDIR=log
 echo Logging into $LOGDIR/$(basename $SPECDIR)
 mkdir -p $LOGDIR/$(basename $SPECDIR)
 
+THREADS=80
+OUT_FORMAT=idXML
+
 for f in $SPEC_PATH_PATTERN;
 do
-	RESFILE=$(echo $RESDIR/$(echo $(basename $f) | sed -e "s/$EXT/idXML/"))
+	RESFILE=$(echo $RESDIR/$(echo $(basename $f) | sed -e "s/$EXT/${OUT_FORMAT}/"))
 	LOGFILE=$(echo $LOGDIR/$(basename $SPECDIR)/$(echo $(basename $f) | sed -e "s/$EXT\$/log/"))
 	echo "$RESFILE"
 	echo "$LOGFILE"
-	echo OpenPepXLLF -in $f -cross_linker:name $CROSSLINKER -database $DB -threads 20 -algorithm:number_top_hits 10 -decoy_string reverse_ -out_idXML "$RESFILE" >> "$LOGFILE"
-	OpenPepXLLF -in $f -cross_linker:name $CROSSLINKER -database $DB -threads 20 -algorithm:number_top_hits 10 -decoy_string reverse_ -out_idXML "$RESFILE" &>> "$LOGFILE" &
-	# OpenPepXLLF -in $f -database $DB -threads 20 -algorithm:number_top_hits 10 -decoy_string reverse_ -out_idXML $RESDIR/$(echo $(basename $f) | sed -e "s/$EXT/idXML/") &>> $LOGDIR/$(basename $SPECDIR)/$(echo $(basename $f) | sed -e "s/$EXT/log/") &
+	if [ -e "$RESFILE" ]; then
+		echo result file "$RESFILE" exists, skipping
+		continue
+	fi
+	echo OpenPepXLLF -in $f -cross_linker:name $CROSSLINKER -database $DB -threads $THREADS -algorithm:number_top_hits 10 -decoy_string reverse_ ${@:4} -out_${OUT_FORMAT} "$RESFILE" > "$LOGFILE"
+	OpenPepXLLF -in $f -cross_linker:name $CROSSLINKER -database $DB -threads $THREADS -algorithm:number_top_hits 10 -decoy_string reverse_ ${@:4} -out_idXML "$RESFILE" # &> "$LOGFILE" &
 done
 

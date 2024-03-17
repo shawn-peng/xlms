@@ -14,22 +14,30 @@ from collections import defaultdict
 from load_search_result import load_idxmls, load_mzids
 from plot_search_result import plot_result
 
-info_dir = './results/info/'
+res_dir = './results/'
+info_dir = f'{res_dir}/info/'
+
 
 def register_info_dir(d):
     global info_dir
     info_dir = d
 
 
+def register_results_dir(d):
+    global res_dir, info_dir
+    res_dir = d
+    info_dir = f'{res_dir}/info/'
+
+
 def extract_res(name, suffix=''):
-    data_tab = load_idxmls(f'{name}/*.idXML', 'results/openpepxllf/knime4.6/')
+    data_tab = load_idxmls(f'{name}/*.idXML', f'{res_dir}/openpepxllf/knime4.6/')
     if not os.path.exists(info_dir):
         os.makedirs(info_dir)
     data_tab.to_csv(f'{info_dir}/{name}_res.csv')
 
 
 def extract_decoy_res(name):
-    data_tab = load_idxmls(f'{name}_decoy/*.idXML', 'results/openpepxllf/knime4.6/')
+    data_tab = load_idxmls(f'{name}_decoy/*.idXML', f'{res_dir}/openpepxllf/knime4.6/')
     if not os.path.exists(info_dir):
         os.makedirs(info_dir)
     data_tab.to_csv(f'{info_dir}/{name}_decoy_res.csv')

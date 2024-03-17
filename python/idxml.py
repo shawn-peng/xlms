@@ -7,40 +7,7 @@ import numpy as np
 import pandas as pd
 import traceback as tb
 
-
-def get_user_param_value(param):
-    if param.attrib['type'] == 'string':
-        return param.attrib['value']
-    elif param.attrib['type'] == 'int':
-        return int(param.attrib['value'])
-    elif param.attrib['type'] == 'float':
-        return float(param.attrib['value'])
-    else:
-        assert False, param.attrib['type']
-
-
-def from_user_param(node):
-    r = {}
-    for x in node.findall('UserParam'):
-        r[x.attrib['name']] = get_user_param_value(x)
-    return r
-
-
-class XMLNode:
-    def __init__(self, node):
-        self.node = node
-        self.d = {}
-        self.d.update(node.attrib)
-        self.d.update(from_user_param(node))
-
-    def __getattr__(self, attr):
-        if attr in self.d:
-            return self.d[attr]
-        print(self.d)
-        return super().__getattr__(attr)
-
-    def __getitem__(self, item):
-        return self.d[item]
+from myutils import *
 
 
 class XLMS_res:
@@ -71,6 +38,13 @@ class XLMS_res:
     def DataFrame(self):
         res = []
 
+        protrefs = {}
+        prots = self.xml.find('IdentificationRun/ProteinIdentification')
+        for prot_hit in prots.findall('ProteinHit'):
+            node = XMLNode(prot_hit)
+            # print(node.id, node.accession)
+            protrefs[node.id] = node.accession
+
         # chain_cols = ['sequence', 'charge', 'aa_before', 'aa_after', 'start', 'end', 'protein_refs']
         # chain_cols = ['sequence']
         for psm_node in self.pep_matches():
@@ -89,6 +63,8 @@ class XLMS_res:
                     assert v == row[k]
             row.update(alpha.d)
             try:
+                row['protein_refs'] = row['protein_refs'].split()
+                row['accessions'] = list(map(lambda x: protrefs[x], row['protein_refs']))
                 if psm.xl_type == 'cross-link':
                     beta = XMLNode(psm_node.find('PeptideHit[2]'))
                 elif psm.xl_type == 'mono-link':
@@ -99,7 +75,7 @@ class XLMS_res:
                     print(psm.xl_type)
                     assert False
                     break
-            except e:
+            except Exception as e:
                 tb.print_exc()
             res.append(row)
         return pd.DataFrame(res)
