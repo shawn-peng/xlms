@@ -29,6 +29,32 @@ def releaseLock(locked_file_descriptor):
     locked_file_descriptor.close()
 
 
+def gen_ufunc(nin, nout):
+    return lambda f: np.frompyfunc(f, nin, nout)
+
+def reduce(f, arr, dims):
+    r = arr
+    for dim in dims:
+        r = f.reduce(r, dim, keepdims=True)
+    return r.squeeze(dims)
+
+@gen_ufunc(2, 1)
+def max_ll(x, y):
+    if x['ll'] > y['ll']:
+        return x
+    else:
+        return y
+
+@gen_ufunc(1, 1)
+def take_model(x):
+    return x['model']
+
+@gen_ufunc(1, 1)
+def take_fdr_thres(x):
+    return x.fdr_thres
+
+
+
 def truncate_zero(m):
     # flags = m == 0
     # assert not np.any(flags)
@@ -129,3 +155,39 @@ class DynamicParam:
     def __imul__(self, other):
         self.val *= other
         return self
+
+
+def get_user_param_value(param):
+    if param.attrib['type'] == 'string':
+        return param.attrib['value']
+    elif param.attrib['type'] == 'int':
+        return int(param.attrib['value'])
+    elif param.attrib['type'] == 'float':
+        return float(param.attrib['value'])
+    else:
+        assert False, param.attrib['type']
+
+
+def from_user_param(node):
+    r = {}
+    for x in node.findall('UserParam'):
+        r[x.attrib['name']] = get_user_param_value(x)
+    return r
+
+
+class XMLNode:
+    def __init__(self, node):
+        self.node = node
+        self.d = {}
+        self.d.update(node.attrib)
+        self.d.update(from_user_param(node))
+
+    def __getattr__(self, attr):
+        if attr in self.d:
+            return self.d[attr]
+        print(self.d)
+        return super().__getattr__(attr)
+
+    def __getitem__(self, item):
+        return self.d[item]
+
