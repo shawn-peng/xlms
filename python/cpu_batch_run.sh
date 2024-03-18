@@ -19,8 +19,9 @@ mu_strategy=$1
 
 echo $mu_strategy
 
-# ./run_1S_dataset_i.sh $i unweighted_pdf_mode $p $mu_strategy
-./run_dataset_i.sh $i unweighted_pdf_mode $p $mu_strategy
+./run_1S_dataset_i.sh $i unweighted_pdf_mode $p $mu_strategy
+# ./run_dataset_i.sh $i no_constraint $p $mu_strategy
+# ./run_dataset_i.sh $i unweighted_pdf_mode $p $mu_strategy
 
 
 

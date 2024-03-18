@@ -123,6 +123,7 @@ parser.add_argument('-a', '--all', action='store_true', default=False)
 parser.add_argument('-p', '--parallel', action='store_true', default=False)
 parser.add_argument('-i', '--inner_parallel', action='store_true', default=False)
 parser.add_argument('--show_plotting', action='store_true', default=show_plotting)
+parser.add_argument('--clear_results', action='store_false', default=True)
 parser.add_argument('--mu_strategy', default=mu_strategy)
 
 args = parser.parse_args()
@@ -143,6 +144,7 @@ part = args.part
 random_i = args.random_i
 show_plotting = args.show_plotting
 mu_strategy = args.mu_strategy
+clear_results = args.clear_results
 
 map_cons_str = {
     'weights':      'w',
@@ -218,7 +220,7 @@ def capture_args(locals):
 
 
 def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
-    title = f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} constraints={get_cons_str(settings[config]['constraints'])}"
+    title = f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} id={modelid} constraints={get_cons_str(settings[config]['constraints'])}"
     print('model:', modelid)
     if model_samples == 1:
         model = MixtureModel1S(sls, **settings[config], title=title, seedoff=modelid)
@@ -252,7 +254,7 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
     plt.axvline(tda_fdr1, linestyle='--')
     plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
-        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} ll={ll:.05f}"
+        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {sls} id={modelid} ll={ll:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}"
         f" {'Y' if model.cons_satisfied else 'N'}")
     plt.savefig(res_dir + '_'.join(map(str, sls.values())) + '.png')
@@ -261,6 +263,7 @@ def run_model(sls, dataset_name, dataset, tda_info, res_dir, modelid=0):
         'lls':      lls,
         'sls':      sls,
         'slls':     model.slls,
+        'modelid':  modelid,
         'model':    model.frozen(),
         'cons_sat': model.cons_satisfied,
     }
@@ -296,7 +299,7 @@ def run_rand_models(n, sls, dataset_name, dataset, tda_info, res_dir):
         plt.axvline(tda_fdr1, linestyle='--')
         plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
         plt.title(
-            f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} ll={model['ll']:.05f}"
+            f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {model['sls']} id={model['modelid']} ll={model['ll']:.05f}"
             f" constraints={get_cons_str(settings[config]['constraints'])}"
             f" {'Y' if model['cons_sat'] else 'N'}")
         plt.savefig(f'{rand_dir}/{fname}')
@@ -329,6 +332,7 @@ def run_dataset(dataset_name):
 
     # res_dir = f'../figures_python_1S_{config}/{dataset_name}/'
     res_dir = f'../{base_figure_dir}/{dataset_name}/'
+
     # res_dir = f'../figures_python_order_stats_skewnorm_IC_I/{dataset_name}/'
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
@@ -398,7 +402,7 @@ def run_dataset(dataset_name):
     plt.axvline(tda_fdr1, linestyle='--')
     plt.text(tda_fdr1, 0.003, '$\leftarrow$ TDA 1% FDR threshold')
     plt.title(
-        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {best['sls']} ll={best['ll']:.05f}"
+        f"({dataset.mat.shape[1] / 1000:.1f}k) {dataset_name} {best['sls']} id={best['modelid']} ll={best['ll']:.05f}"
         f" constraints={get_cons_str(settings[config]['constraints'])}"
         f" {'Y' if best['cons_sat'] else 'N'}")
     plt.savefig(f'{res_dir}/best.png')

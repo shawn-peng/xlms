@@ -107,7 +107,7 @@ class MixtureModel(MixtureModelBase):
                 if cname not in self.all_comps:
                     if cname == 'NA':
                         """use a fixed dummy dirac delta distribution"""
-                        self.all_comps[cname] = FN(-10000, 1e-8)
+                        self.all_comps[cname] = FN(self.missing_value, 1e-8)
                     else:
                         self.all_comps[cname] = SN(skew_dirs[cname], name=cname)
 
@@ -619,13 +619,15 @@ class MixtureModel(MixtureModelBase):
         self.all_comps = deepcopy(frozen_model.all_comps)
         for i in range(self.n_samples):
             for j, cname in enumerate(self.comps[i].keys()):
+                if cname == 'NA':
+                    continue
                 self.comps[i][cname] = self.all_comps[cname]
         self.weights = deepcopy(frozen_model.weights)
         self.create_constraints()
         self.starting_pos = frozen_model.starting_pos
         self.initialized = True
 
-        self.plot(X, [], self.sep_log_likelihood(X))
+        # self.plot(X, [], self.sep_log_likelihood(X))
 
     def init_model(self, X):
         X = X.astype(np.float64)

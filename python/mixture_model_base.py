@@ -36,6 +36,7 @@ class PlotWrapper:
 
 class MixtureModelBase:
     def __init__(self, plot_func=None, title=None, **kwargs):
+        self.missing_value = 0.0
         self.plot_func = plot_func
         # if not plot_pipe:
         #     plot_pipe, plotter_pipe = mp.Pipe()
@@ -237,7 +238,7 @@ class MixtureModelBase:
                 nonzero = X[:, i]
             else:
                 reweight_scale = 1 / (1 - self.weights[i]['NA'].get())
-                nonzero = X[:, i][X[:, i] != -10000]
+                nonzero = X[:, i][X[:, i] != self.missing_value]
             pj.append(np.zeros((len(nonzero), len(self.comps[i]))))
             for j, (cname, cdist) in enumerate(self.comps[i].items()):
                 # pj[i][:, j] = ws[cname] * cdist.pdf(X[:, i])
