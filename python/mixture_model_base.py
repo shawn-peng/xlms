@@ -71,7 +71,7 @@ class MixtureModelBase:
         self.xrange = np.arange(xmin, xmax + xstep, xstep)
 
         xmax = np.max(X)
-        if 'D1810' in self.title:
+        if self.title and 'D1810' in self.title:
             xmin = -100
         else:
             xmin = -50
@@ -107,7 +107,7 @@ class MixtureModelBase:
         # print('frozen_model starting_pos', frozen_model.starting_pos)
         # frozen_model = AttrObj(frozen_model)
         xmax = np.max(X)
-        if 'D1810' in frozen_model.title:
+        if frozen_model.title and 'D1810' in frozen_model.title:
             xmin = -100
         else:
             xmin = -50
