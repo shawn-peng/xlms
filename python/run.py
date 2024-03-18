@@ -109,22 +109,22 @@ config = 'unweighted_pdf_mode'
 
 dir_suffix = '_4'
 
-parser = argparse.ArgumentParser(prog='XLMS')
-parser.add_argument('-d', '--dataset', default=dataset_to_run)
-parser.add_argument('-c', '--config', default=config)
-parser.add_argument('-s', '--model_samples', type=int, default=model_samples)
-parser.add_argument('--suffix', default=dir_suffix)
-parser.add_argument('-j', '--jobs', type=int, default=num_workers)
-parser.add_argument('-r', '--random_size', type=int, default=random_size)
-parser.add_argument('-q', '--part', type=int, default=-1)
-parser.add_argument('-o', '--random_i', type=int, default=-1)
-parser.add_argument('-t', '--tolerance', type=float, default=tolerance)
-parser.add_argument('-a', '--all', action='store_true', default=False)
-parser.add_argument('-p', '--parallel', action='store_true', default=False)
-parser.add_argument('-i', '--inner_parallel', action='store_true', default=False)
-parser.add_argument('--show_plotting', action='store_true', default=show_plotting)
-parser.add_argument('--clear_results', action='store_false', default=True)
-parser.add_argument('--mu_strategy', default=mu_strategy)
+parser = argparse.ArgumentParser(prog='run.py')
+parser.add_argument('-d', '--dataset', default=dataset_to_run, help='the dataset name to estimate FDR')
+parser.add_argument('-c', '--config', default=config, help='constrains setting, [no_constraint, unweighted_pdf_mode]')
+parser.add_argument('-s', '--model_samples', type=int, default=model_samples, help='number of samples of the mixture model, 1 or 2')
+parser.add_argument('--suffix', default=dir_suffix, help='add a suffix to the output directory to avoid overwrite previous results')
+parser.add_argument('-j', '--jobs', type=int, default=num_workers, help='number of threads')
+parser.add_argument('-r', '--random_size', type=int, default=random_size, help='number of random starts for each skewness setting')
+parser.add_argument('-q', '--part', type=int, default=-1, help='the index of skewness setting to run, [0 - 5]')
+parser.add_argument('-o', '--random_i', type=int, default=-1, help='the index of random start to run')
+parser.add_argument('-t', '--tolerance', type=float, default=tolerance, help='the tolerance to check the convergence of the algorithm')
+parser.add_argument('-a', '--all', action='store_true', default=False, help='run all the datasets mentioned in the paper')
+parser.add_argument('-p', '--parallel', action='store_true', default=False, help='run algorithm in parallel for different starts')
+parser.add_argument('-i', '--inner_parallel', action='store_true', default=False, help='run algorithm in parallel for random starts')
+parser.add_argument('--show_plotting', action='store_true', default=show_plotting, help='show plotting while fitting the model (this will slow down the process largely)')
+# parser.add_argument('--clear_results', action='store_false', default=True, help=)
+parser.add_argument('--mu_strategy', default=mu_strategy, help='the strategy for generating the initial mu parameters for components, [gaussian, gamma, uniform]')
 
 args = parser.parse_args()
 
@@ -144,7 +144,7 @@ part = args.part
 random_i = args.random_i
 show_plotting = args.show_plotting
 mu_strategy = args.mu_strategy
-clear_results = args.clear_results
+# clear_results = args.clear_results
 
 map_cons_str = {
     'weights':      'w',
