@@ -21,7 +21,7 @@ Run the search following OpenPepXLLF document and output search results in idXML
 
 For decoy search, run the search algorithm with a target-decoy protein sequence database that has decoy sequences appended.
 
-For no-decoy search, just run with target database
+For no-decoy search, just run with target database.
 
 If you want to use scripts provided to parse the results, please put the search results under directory
 ```results/openpepxllf/knime4.6/<dataset_name>/```,
