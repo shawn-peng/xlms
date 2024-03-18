@@ -34,6 +34,6 @@ do
 	# 	continue
 	# fi
 	echo OpenPepXLLF -in $f -cross_linker:name $CROSSLINKER -database $DB -threads $THREADS -algorithm:number_top_hits 10 -decoy_string reverse_ ${@:4} -out_${OUT_FORMAT} "$RESFILE" > "$LOGFILE"
-	OpenPepXLLF -in $f -cross_linker:name $CROSSLINKER -database $DB -threads $THREADS -algorithm:number_top_hits 10 -decoy_string reverse_ ${@:4} -out_idXML "$RESFILE" # &> "$LOGFILE" &
+	OpenPepXLLF -in $f -cross_linker:name $CROSSLINKER -database $DB -threads $THREADS -algorithm:number_top_hits 10 -decoy_string reverse_ ${@:4} -out_idXML "$RESFILE" &> "$LOGFILE" #&
 done
 

@@ -8,6 +8,6 @@ else
 	./convert_raw_to_mzML.sh "$spec_dir"
 fi
 
-./run_decoy_search_dir.sh "$spec_dir/*.mzML" "../db/RPA/subjects_decoy.fasta"
+./run_decoy_search_dir.sh "$spec_dir/*.mzML" "../db/RPA/subjects_decoy.fasta" BS3
 
 
